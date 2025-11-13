@@ -61,7 +61,7 @@ services:
     container_name: cf-football-bypass
     restart: always
     environment:
-      DOMAINS: '[{"name":"casa-carreras.es","record":"@","type":"A"}]'
+      DOMAINS: '[{"name":"mi-domain.com","record":"@","type":"A"}]'
       INTERVAL_SECONDS: 300
     secrets:
       - cf_api_token
