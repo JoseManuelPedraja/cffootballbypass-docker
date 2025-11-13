@@ -64,27 +64,17 @@ services:
     container_name: cf-football-bypass
     restart: always
     environment:
-      CF_API_TOKEN_FILE: /run/secrets/cf_api_token
-      CF_ZONE_ID_FILE: /run/secrets/cf_zone_id
+      CF_API_TOKEN: "cf_api_token"
+      CF_ZONE_ID: "cf_zone_id"
       DOMAINS: '[{"name":"mi-domain.com","record":"@","type":"A"}]'
       INTERVAL_SECONDS: 300
-    secrets:
-      - cf_api_token
-      - cf_zone_id
     volumes:
       - cflogs:/app/logs
     networks:
       - private_network
 
-secrets:
-  cf_api_token:
-    file: ./cf_api_token.txt
-  cf_zone_id:
-    file: ./cf_zone_id.txt
-
 volumes:
   cflogs:
 
 networks:
-
   private_network:
