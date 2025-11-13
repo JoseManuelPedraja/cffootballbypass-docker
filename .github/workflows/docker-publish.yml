@@ -1,0 +1,44 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  # También puedes activar al crear un tag
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Extraer tag de Git si existe, sino usar "latest"
+      - name: Set Docker image tag
+        id: docker_tag
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF##*/}
+          else
+            TAG=latest
+          fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t myusername/myimage:${TAG} -t myusername/myimage:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push harlekesp/cffootballbypass:${TAG}
+          docker push harlekesp/cffootballbypass:latest
