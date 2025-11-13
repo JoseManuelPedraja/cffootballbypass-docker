@@ -1,36 +1,44 @@
 #!/bin/bash
-set -e
+echo "===== Iniciando CF Football Bypass ====="
 
+# Leer variables de entorno y secrets
+DOMAINS_JSON=${DOMAINS}
+INTERVAL=${INTERVAL_SECONDS:-300}
 CF_API_TOKEN=$(cat /run/secrets/cf_api_token)
 CF_ZONE_ID=$(cat /run/secrets/cf_zone_id)
-LOG_FILE="/app/logs/$(date +'%Y-%m-%d').log"
 
-echo "===== Iniciando CF Football Bypass =====" >> "$LOG_FILE"
+while true; do
+    echo "[$(date)] Consultando feed oficial..."
+    FEED=$(curl -s https://hayahora.futbol/estado/data.json)
 
-while true
-do
-    echo "[$(date)] Consultando feed oficial..." >> "$LOG_FILE"
-    FOOTBALL_PRESENT=$(php /app/check_feed.php "$FEED_URL")
-
-    if [ "$FOOTBALL_PRESENT" = "true" ]; then
-        echo "[$(date)] ⚽ Bloqueo activo (No-IP = true): quitando proxy de Cloudflare" >> "$LOG_FILE"
-        PROXY_STATE="false"
-    else
-        echo "[$(date)] ✅ Sin bloqueo (No-IP = false): activando proxy de Cloudflare" >> "$LOG_FILE"
-        PROXY_STATE="true"
-    fi
-
-    for row in $(echo "$DOMAINS" | jq -c '.[]'); do
-        NAME=$(echo $row | jq -r '.name')
-        RECORD=$(echo $row | jq -r '.record')
-        TYPE=$(echo $row | jq -r '.type')
-
-        php /app/manage_dns.php "$NAME" "$RECORD" "$TYPE" "$PROXY_STATE" "$CF_API_TOKEN" "$CF_ZONE_ID" >> "$LOG_FILE" 2>&1
+    # Revisar bloqueos: si algún registro tiene state=true → bloqueo activo
+    BLOQUEO=false
+    for row in $(echo "$FEED" | jq -c '.data[]'); do
+        LAST_STATE=$(echo "$row" | jq -r '.stateChanges[-1].state')
+        if [ "$LAST_STATE" = "true" ]; then
+            BLOQUEO=true
+            break
+        fi
     done
 
-    # Comprimir logs antiguos
-    find /app/logs -type f -name "*.log" -mtime +7 -exec gzip {} \;
+    if [ "$BLOQUEO" = true ]; then
+        echo "[$(date)] ⚽ Bloqueo activo: quitando proxy de Cloudflare"
+        PROXIED=false
+    else
+        echo "[$(date)] ✅ Sin bloqueo: activando proxy de Cloudflare"
+        PROXIED=true
+    fi
 
-    echo "[$(date)] Esperando $INTERVAL_SECONDS segundos antes de volver a comprobar..." >> "$LOG_FILE"
-    sleep "$INTERVAL_SECONDS"
+    # Aplicar cambios a todos los dominios configurados
+    for DOMAIN_OBJ in $(echo "$DOMAINS_JSON" | jq -c '.[]'); do
+        DOMAIN=$(echo "$DOMAIN_OBJ" | jq -r '.name')
+        RECORD=$(echo "$DOMAIN_OBJ" | jq -r '.record')
+        TYPE=$(echo "$DOMAIN_OBJ" | jq -r '.type')
+
+        # Ejecutar script PHP para actualizar Cloudflare
+        php /app/update_dns.php "$DOMAIN" "$RECORD" "$TYPE" "$PROXIED" "$CF_API_TOKEN" "$CF_ZONE_ID"
+    done
+
+    echo "[$(date)] Esperando $INTERVAL segundos antes de volver a comprobar..."
+    sleep $INTERVAL
 done
