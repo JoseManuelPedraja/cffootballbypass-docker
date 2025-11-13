@@ -1,10 +1,28 @@
 #!/bin/bash
 echo "===== Iniciando CF Football Bypass INTELIGENTE ====="
 
+# Leer variables desde secrets o entorno directo
+if [ -f "$CF_API_TOKEN_FILE" ]; then
+    CF_API_TOKEN=$(cat "$CF_API_TOKEN_FILE")
+else
+    CF_API_TOKEN=${CF_API_TOKEN}
+fi
+
+if [ -f "$CF_ZONE_ID_FILE" ]; then
+    CF_ZONE_ID=$(cat "$CF_ZONE_ID_FILE")
+else
+    CF_ZONE_ID=${CF_ZONE_ID}
+fi
+
 DOMAINS_JSON=${DOMAINS}
 INTERVAL=${INTERVAL_SECONDS:-300}
-CF_API_TOKEN=$(cat /run/secrets/cf_api_token)
-CF_ZONE_ID=$(cat /run/secrets/cf_zone_id)
+FEED_URL=${FEED_URL:-"https://hayahora.futbol/estado/data.json"}
+
+if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ZONE_ID" ]; then
+    echo "❌ ERROR: No se encontraron los valores CF_API_TOKEN o CF_ZONE_ID."
+    echo "   Asegúrate de definirlos en secrets o variables de entorno."
+    exit 1
+fi
 
 # Función para obtener IPs de un dominio desde Cloudflare
 get_domain_ips() {
@@ -12,20 +30,17 @@ get_domain_ips() {
     local record=$2
     local type=$3
     
-    # Construir nombre completo
     if [ "$record" = "@" ] || [ "$record" = "$domain" ] || [ -z "$record" ]; then
         local fullname="$domain"
     else
         local fullname="$record.$domain"
     fi
     
-    # Consultar Cloudflare API
     local response=$(curl -s -X GET \
         "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$fullname&type=$type" \
         -H "Authorization: Bearer $CF_API_TOKEN" \
         -H "Content-Type: application/json")
-    
-    # Extraer IP
+
     echo "$response" | jq -r '.result[0].content // empty'
 }
 
@@ -33,7 +48,6 @@ while true; do
     echo ""
     echo "[$(date)] 🔍 Paso 1: Obteniendo IPs de tus dominios..."
     
-    # Recopilar todas las IPs de los dominios configurados
     MY_IPS=()
     for DOMAIN_OBJ in $(echo "$DOMAINS_JSON" | jq -c '.[]'); do
         DOMAIN=$(echo "$DOMAIN_OBJ" | jq -r '.name')
@@ -62,13 +76,12 @@ while true; do
         continue
     fi
     
-    # Eliminar duplicados
     MY_IPS=($(echo "${MY_IPS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
     echo "[$(date)] 📋 IPs a monitorizar: ${MY_IPS[@]}"
     
-    echo "[$(date)] 🔍 Paso 2: Consultando feed de hayahora.futbol..."
+    echo "[$(date)] 🔍 Paso 2: Consultando feed oficial..."
     
-    FEED=$(curl -s --max-time 10 https://hayahora.futbol/estado/data.json)
+    FEED=$(curl -s --max-time 10 "$FEED_URL")
     
     if [ -z "$FEED" ] || [ "$FEED" = "null" ]; then
         echo "[$(date)] ⚠️  Error al obtener el feed. Reintentando en 60s..."
@@ -78,12 +91,10 @@ while true; do
     
     echo "[$(date)] 🔍 Paso 3: Buscando tus IPs en el feed..."
     
-    # Buscar si alguna de MIS IPs está bloqueada
     BLOQUEO_DETECTADO=false
     IPS_BLOQUEADAS=()
     
     for MY_IP in "${MY_IPS[@]}"; do
-        # Buscar esta IP en el feed
         IP_FOUND=false
         
         for row in $(echo "$FEED" | jq -c ".data[] | select(.ip == \"$MY_IP\")"); do
@@ -108,7 +119,6 @@ while true; do
     
     echo "[$(date)] 🔍 Paso 4: Decidiendo acción..."
     
-    # Decidir si activar o desactivar proxy
     if [ "$BLOQUEO_DETECTADO" = true ]; then
         echo "[$(date)] ⚽ BLOQUEO DETECTADO en tus IPs: ${IPS_BLOQUEADAS[@]}"
         echo "[$(date)] 🔧 Quitando proxy de Cloudflare para evitar bloqueos..."
@@ -123,7 +133,6 @@ while true; do
     
     echo "[$(date)] 🔄 Paso 5: $ACTION_DESC en tus dominios..."
     
-    # Aplicar cambios
     for DOMAIN_OBJ in $(echo "$DOMAINS_JSON" | jq -c '.[]'); do
         DOMAIN=$(echo "$DOMAIN_OBJ" | jq -r '.name')
         RECORD=$(echo "$DOMAIN_OBJ" | jq -r '.record')

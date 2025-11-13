@@ -8,18 +8,14 @@ $zoneId = $argv[6];
 
 $endpoint = "https://api.cloudflare.com/client/v4/zones/$zoneId/dns_records";
 
-// CORREGIDO: Construir nombre completo correctamente
 if ($record === "@" || $record === $domain || empty($record)) {
-    // Es el dominio raíz
     $fullname = $domain;
 } else {
-    // Es un subdominio
     $fullname = "$record.$domain";
 }
 
 echo "🔍 Buscando registro: $fullname (tipo: $type)\n";
 
-// Obtener registro DNS
 $ch = curl_init("$endpoint?name=$fullname&type=$type");
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "Authorization: Bearer $apiToken",
@@ -42,7 +38,6 @@ if (isset($result['result'][0])) {
     $content = $result['result'][0]['content'];
     $currentProxied = $result['result'][0]['proxied'];
 
-    // Solo actualizar si el estado es diferente
     if ($currentProxied === $proxy) {
         echo "ℹ️  Registro $fullname ya está en el estado deseado (proxied=$proxy)\n";
         exit(0);

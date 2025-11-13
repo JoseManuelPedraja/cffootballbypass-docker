@@ -1,6 +1,5 @@
 FROM php:8.4-cli-alpine AS base
 
-
 RUN apk add --no-cache \
     curl \
     jq \
@@ -9,13 +8,10 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-
 COPY run.sh manage_dns.php /app/
 RUN chmod +x /app/run.sh
 
-
 RUN mkdir -p /app/logs
-
 
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser && \
@@ -23,11 +19,11 @@ RUN addgroup -g 1000 appuser && \
 
 USER appuser
 
-
 ENV FEED_URL="https://hayahora.futbol/estado/data.json"
 ENV DOMAINS="[]"
 ENV INTERVAL_SECONDS=300
-
+ENV CF_API_TOKEN_FILE="/run/secrets/cf_api_token"
+ENV CF_ZONE_ID_FILE="/run/secrets/cf_zone_id"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f https://hayahora.futbol/estado/data.json || exit 1
