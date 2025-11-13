@@ -49,3 +49,36 @@ This project reads the official public feed from [hayahora.futbol](https://hayah
 - Your **Cloudflare Zone ID**
 
 ---
+
+## 🛠️ Docker Compose Example
+
+```yaml
+version: '3.9'
+
+services:
+  cf-bypass:
+    image: harlekesp/cf-football-bypass:latest
+    container_name: cf-football-bypass
+    restart: always
+    environment:
+      DOMAINS: '[{"name":"mi-domain.com","record":"www","type":"A"}]'
+      INTERVAL_SECONDS: 300
+    secrets:
+      - cf_api_token
+      - cf_zone_id
+    volumes:
+      - cflogs:/app/logs
+    networks:
+      - private_network  # ⚽ CF Football Bypass (Docker Edition)
+
+secrets:
+  cf_api_token:
+    file: ./cf_api_token.txt
+  cf_zone_id:
+    file: ./cf_zone_id.txt
+
+volumes:
+  cflogs:
+
+networks:
+  private_network:
