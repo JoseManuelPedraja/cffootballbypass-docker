@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-  # También puedes activar al crear un tag
-  push:
     tags:
       - '*'
 
@@ -36,7 +34,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t myusername/myimage:${TAG} -t myusername/myimage:latest .
+          docker build -t harlekesp/cffootballbypass:${TAG} -t myusername/myimage:latest .
 
       - name: Push Docker image
         run: |
