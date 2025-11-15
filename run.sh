@@ -1,113 +1,137 @@
-#!/bin/bash
-echo "===== Iniciando CF Football Bypass INTELIGENTE ====="
+<?php
 
-DOMAINS_JSON=${DOMAINS}
-INTERVAL=${INTERVAL_SECONDS:-300}
-CF_API_TOKEN=${CF_API_TOKEN}
-CF_ZONE_ID=${CF_ZONE_ID}
-FEED_URL=${FEED_URL:-"https://hayahora.futbol/estado/data.json"}
+// Colores ANSI
+define('GRAY', "\033[0;90m");
+define('RED', "\033[0;31m");
+define('GREEN', "\033[0;32m");
+define('YELLOW', "\033[1;33m");
+define('BLUE', "\033[0;34m");
+define('CYAN', "\033[0;36m");
+define('WHITE', "\033[1;37m");
+define('NC', "\033[0m");
 
-if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ZONE_ID" ]; then
-    echo "❌ Error: CF_API_TOKEN y CF_ZONE_ID deben estar configurados"
-    exit 1
-fi
+function log_message($emoji, $level, $color, $message) {
+    $timestamp = date('Y-m-d H:i:s');
+    echo GRAY . "[{$timestamp}]" . NC . " {$color}{$emoji} {$level}" . NC . " â”‚ {$message}\n";
+}
 
-while true; do
-    echo ""
-    echo "[$(date '+%F %T')] 🔍 Paso 1: Obteniendo IPs públicas de Cloudflare..."
+// Validar argumentos
+if ($argc < 7) {
+    log_message('âŒ', 'ERROR', RED, 'Argumentos insuficientes');
+    exit(1);
+}
 
-    MONITOR_IPS=()
-    DOMAINS_LIST=()
+$domain = $argv[1];
+$record = $argv[2];
+$type = $argv[3];
+$proxy = filter_var($argv[4], FILTER_VALIDATE_BOOLEAN);
+$apiToken = $argv[5];
+$zoneId = $argv[6];
 
-    for DOMAIN_OBJ in $(echo "$DOMAINS_JSON" | jq -c '.[]'); do
-        DOMAIN=$(echo "$DOMAIN_OBJ" | jq -r '.name')
-        RECORD=$(echo "$DOMAIN_OBJ" | jq -r '.record // "@"')
-        TYPE=$(echo "$DOMAIN_OBJ" | jq -r '.type // "A"')
+// Construir nombre completo
+if ($record === "@" || empty($record)) {
+    $fullname = $domain;
+} else {
+    $fullname = "$record.$domain";
+}
 
-        FULLNAME="$RECORD.$DOMAIN"
-        [ "$RECORD" = "@" ] && FULLNAME="$DOMAIN"
+$endpoint = "https://api.cloudflare.com/client/v4/zones/$zoneId/dns_records";
 
-        # Obtener IP pública real usando dig con 1.1.1.1 (Cloudflare resolver)
-        IP=$(dig +short "$FULLNAME" @1.1.1.1 | head -n1)
+echo GRAY . "   â”œâ”€" . NC . " " . BLUE . "ðŸ” Buscando" . NC . " " . WHITE . $fullname . NC . GRAY . " (tipo: $type)" . NC . "\n";
 
-        if [ -n "$IP" ]; then
-            MONITOR_IPS+=("$IP")
-            DOMAINS_LIST+=("$FULLNAME")
-            echo "   ├─ ℹ️ Dominio $FULLNAME listo para monitorizar (IP pública obtenida)"
-        else
-            echo "   ├─ ⚠️ No se pudo obtener IP pública para $FULLNAME"
-        fi
-    done
+// Buscar registro existente
+$ch = curl_init("$endpoint?name=" . urlencode($fullname) . "&type=$type");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer $apiToken",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch);
+curl_close($ch);
 
-    if [ ${#MONITOR_IPS[@]} -eq 0 ]; then
-        echo "[$(date '+%F %T')] ❌ No se pudieron obtener IPs públicas. Reintentando en 60s..."
-        sleep 60
-        continue
-    fi
+if ($response === false) {
+    echo GRAY . "   â”œâ”€" . NC . " " . RED . "âŒ Error de conexiÃ³n: " . NC . $curlError . "\n";
+    exit(1);
+}
 
-    echo "[$(date '+%F %T')] 🔍 Paso 2: Consultando feed: $FEED_URL"
-    FEED=$(curl -s --max-time 10 "$FEED_URL")
-    if [ -z "$FEED" ] || [ "$FEED" = "null" ]; then
-        echo "[$(date '+%F %T')] ⚠️ Error al obtener el feed. Reintentando en 60s..."
-        sleep 60
-        continue
-    fi
+if ($httpCode !== 200) {
+    echo GRAY . "   â”œâ”€" . NC . " " . RED . "âŒ HTTP $httpCode" . NC . " al consultar Cloudflare\n";
+    exit(1);
+}
 
-    echo "[$(date '+%F %T')] 🔍 Paso 3: Buscando coincidencias en el feed..."
+$result = json_decode($response, true);
 
-    BLOQUEO_DETECTADO=false
-    IPS_BLOQUEADAS=()
-    DOMAINS_BLOQUEADOS=()
+if (!isset($result['result']) || !is_array($result['result'])) {
+    echo GRAY . "   â”œâ”€" . NC . " " . RED . "âŒ Respuesta invÃ¡lida" . NC . " de Cloudflare API\n";
+    exit(1);
+}
 
-    for i in "${!MONITOR_IPS[@]}"; do
-        IP=${MONITOR_IPS[$i]}
-        FULLNAME=${DOMAINS_LIST[$i]}
+if (empty($result['result'])) {
+    echo GRAY . "   â”œâ”€" . NC . " " . RED . "âŒ Registro no encontrado" . NC . "\n";
+    echo GRAY . "   â””â”€" . NC . " " . YELLOW . "ðŸ’¡ Verifica:" . NC . " nombre correcto y tipo de registro\n";
+    exit(1);
+}
 
-        # Buscar esta IP en el feed
-        FOUND=$(echo "$FEED" | jq -c --arg ip "$IP" '.data[] | select(.ip==$ip)')
+// Procesar registro encontrado
+$recordData = $result['result'][0];
+$recordId = $recordData['id'];
+$content = $recordData['content'];
+$currentProxied = $recordData['proxied'];
 
-        if [ -n "$FOUND" ]; then
-            LAST_STATE=$(echo "$FOUND" | jq -r '.stateChanges[-1].state')
-            ISP=$(echo "$FOUND" | jq -r '.isp')
-            DESCRIPTION=$(echo "$FOUND" | jq -r '.description')
+// Determinar emoji del proxy
+$proxyEmoji = $proxy ? "ðŸ”’" : "ðŸ”“";
+$currentProxyEmoji = $currentProxied ? "ðŸ”’" : "ðŸ”“";
 
-            if [ "$LAST_STATE" = "true" ]; then
-                echo "   ├─ 🔴 $FULLNAME BLOQUEADO en $ISP ($DESCRIPTION)"
-                BLOQUEO_DETECTADO=true
-                IPS_BLOQUEADAS+=("$IP")
-                DOMAINS_BLOQUEADOS+=("$FULLNAME")
-            else
-                echo "   ├─ ✅ $FULLNAME OK en $ISP ($DESCRIPTION)"
-            fi
-        else
-            echo "   ├─ ℹ️ $FULLNAME no encontrada en el feed (probablemente no está bloqueada)"
-        fi
-    done
+// Verificar si ya estÃ¡ en el estado deseado
+if ($currentProxied === $proxy) {
+    $statusColor = $proxy ? GREEN : YELLOW;
+    echo GRAY . "   â”œâ”€" . NC . " " . $statusColor . "â„¹ï¸  Sin cambios" . NC . " â”‚ " . WHITE . $fullname . NC;
+    echo GRAY . " ya estÃ¡ " . NC . $proxyEmoji . GRAY . " (IP: " . CYAN . $content . GRAY . ")" . NC . "\n";
+    exit(0);
+}
 
-    echo "[$(date '+%F %T')] 🔍 Paso 4: Decidiendo acción..."
+// Preparar payload de actualizaciÃ³n
+$payload = json_encode([
+    "type" => $type,
+    "name" => $fullname,
+    "content" => $content,
+    "proxied" => $proxy,
+    "ttl" => $proxy ? 1 : 300  // TTL auto si estÃ¡ proxied, 5min si no
+]);
 
-    if [ "$BLOQUEO_DETECTADO" = true ]; then
-        echo "[$(date '+%F %T')] ⚽ Bloqueos detectados en: ${DOMAINS_BLOQUEADOS[*]}"
-        PROXIED=false
-        ACTION_DESC="DESACTIVANDO PROXY"
-    else
-        echo "[$(date '+%F %T')] ✅ Ningún bloqueo detectado"
-        PROXIED=true
-        ACTION_DESC="ACTIVANDO PROXY"
-    fi
+// Actualizar registro
+$ch = curl_init("$endpoint/$recordId");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer $apiToken",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+$resp = curl_exec($ch);
+$updateCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch);
+curl_close($ch);
 
-    echo "[$(date '+%F %T')] 🔄 Paso 5: $ACTION_DESC en tus dominios..."
+if ($resp === false) {
+    echo GRAY . "   â”œâ”€" . NC . " " . RED . "âŒ Error de conexiÃ³n: " . NC . $curlError . "\n";
+    exit(1);
+}
 
-    # Aplicar cambios en Cloudflare
-    for DOMAIN_OBJ in $(echo "$DOMAINS_JSON" | jq -c '.[]'); do
-        DOMAIN=$(echo "$DOMAIN_OBJ" | jq -r '.name')
-        RECORD=$(echo "$DOMAIN_OBJ" | jq -r '.record // "@"')
-        TYPE=$(echo "$DOMAIN_OBJ" | jq -r '.type // "A"')
-
-        php /app/manage_dns.php "$DOMAIN" "$RECORD" "$TYPE" "$PROXIED" "$CF_API_TOKEN" "$CF_ZONE_ID"
-    done
-
-    echo "[$(date '+%F %T')] ✅ Ciclo completado"
-    echo "[$(date '+%F %T')] ⏳ Esperando $INTERVAL segundos antes de volver a comprobar..."
-    sleep $INTERVAL
-done
+if ($updateCode === 200) {
+    $change = $currentProxyEmoji . " â†’ " . $proxyEmoji;
+    echo GRAY . "   â”œâ”€" . NC . " " . GREEN . "âœ… Actualizado" . NC . " â”‚ " . WHITE . $fullname . NC;
+    echo " " . GRAY . $change . " (IP: " . CYAN . $content . GRAY . ")" . NC . "\n";
+    exit(0);
+} else {
+    $updateResult = json_decode($resp, true);
+    $errorMsg = $updateResult['errors'][0]['message'] ?? 'Error desconocido';
+    echo GRAY . "   â”œâ”€" . NC . " " . RED . "âŒ HTTP $updateCode" . NC . " â”‚ $errorMsg\n";
+    exit(1);
+}
