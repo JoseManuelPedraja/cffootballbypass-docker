@@ -5,18 +5,15 @@ LABEL maintainer="harlekesp"
 LABEL description="CF Football Bypass - Automatic Cloudflare proxy management"
 LABEL version="2.0"
 
-RUN apk update && \
-    apk upgrade --no-cache && \
-    apk add --no-cache \
-        curl \
-        busybox \
-        busybox-binsh \
-        jq \
-        bash \
-        bind-tools \
-        ca-certificates \
-        tzdata && \
-
+RUN apk add --no-cache \
+    curl=8.14.1-r3 \
+    jq=1.7.2-r0 \
+    busybox=1.37.0-r15 \
+    bash=5.2.15-r0 \
+    bind-tools=9.18.10-r0 \
+    ca-certificates=20240112-r0 \
+    tzdata=2025a-r0
+    
     rm -rf /var/cache/apk/* /tmp/* /root/.cache
 
 ENV TZ=Europe/Madrid
