@@ -13,10 +13,16 @@ CYAN='\033[0;36m'
 WHITE='\033[1;37m'
 NC='\033[0m'
 
+LOG_FILE="/app/logs/cfb-docker.log"
+
 log() {
     local ts
     ts=$(date '+%Y-%m-%d %H:%M:%S')
     echo -e "${GRAY}[${ts}]${NC} $*"
+    # Strip ANSI codes for file output
+    local clean
+    clean=$(echo -e "$*" | sed 's/\x1b\[[0-9;]*m//g')
+    echo "[${ts}] ${clean}" >> "$LOG_FILE" 2>/dev/null || true
 }
 
 log_info()  { log "${GREEN}INFO${NC}  │ $*"; }
@@ -35,12 +41,30 @@ anonymize_ip() {
     fi
 }
 
+# ── Read secrets (supports _FILE, /run/secrets/, and env vars) ─────
+read_secret() {
+    local name="$1" file_var="${1}_FILE" value=""
+    # 1. Explicit _FILE variable
+    if [ -n "${!file_var:-}" ] && [ -f "${!file_var}" ]; then
+        value=$(cat "${!file_var}" | tr -d '\n\r')
+        log_info "${GREEN}SECURITY${NC} │ ${name} loaded from ${!file_var}"
+    # 2. Auto-detect Docker secret
+    elif [ -f "/run/secrets/${name,,}" ]; then
+        value=$(cat "/run/secrets/${name,,}" | tr -d '\n\r')
+        log_info "${GREEN}SECURITY${NC} │ ${name} loaded from /run/secrets/${name,,}"
+    # 3. Direct environment variable
+    elif [ -n "${!name:-}" ]; then
+        value="${!name}"
+    fi
+    echo "$value"
+}
+
 # ── Configuration ───────────────────────────────────────────────────
 FEED_URL="${FEED_URL:-https://hayahora.futbol/estado/data.json}"
 DOMAINS="${DOMAINS:-[]}"
 INTERVAL="${INTERVAL_SECONDS:-300}"
-CF_API_TOKEN="${CF_API_TOKEN:-}"
-CF_ZONE_ID="${CF_ZONE_ID:-}"
+CF_API_TOKEN=$(read_secret CF_API_TOKEN)
+CF_ZONE_ID=$(read_secret CF_ZONE_ID)
 STALE_THRESHOLD_HOURS="${STALE_THRESHOLD_HOURS:-6}"
 MIN_ISPS_BLOCKED="${MIN_ISPS_BLOCKED:-2}"
 FORCE_PROXY_OFF_OVERRIDE="${FORCE_PROXY_OFF_OVERRIDE:-0}"
@@ -188,7 +212,7 @@ check_and_manage() {
     # Process each domain
     for i in $(seq 0 $((DOMAIN_COUNT - 1))); do
         local domain record_name record_type
-        domain=$(echo "$DOMAINS" | jq -r ".[$i].domain // empty")
+        domain=$(echo "$DOMAINS" | jq -r ".[$i].domain // .[$i].name // empty")
         record_name=$(echo "$DOMAINS" | jq -r ".[$i].record // \"@\"")
         record_type=$(echo "$DOMAINS" | jq -r ".[$i].type // \"A\"")
 
@@ -296,7 +320,7 @@ check_and_manage() {
 
 # ── Banner ──────────────────────────────────────────────────────────
 echo -e "${WHITE}┌─────────────────────────────────────────────┐${NC}"
-echo -e "${WHITE}│   CF Football Bypass — Docker v2.0.0        │${NC}"
+echo -e "${WHITE}│   CF Football Bypass — Docker v2.0.1        │${NC}"
 echo -e "${WHITE}│   Cloudflare proxy management for La Liga   │${NC}"
 echo -e "${WHITE}└─────────────────────────────────────────────┘${NC}"
 echo ""
@@ -310,8 +334,20 @@ log_info "Force override: ${FORCE_PROXY_OFF_OVERRIDE}"
 log_info "Cooldown: ${COOLDOWN_MINUTES}min"
 echo ""
 
+# ── Log rotation (keep last 50KB) ──────────────────────────────────
+rotate_log() {
+    if [ -f "$LOG_FILE" ]; then
+        local size
+        size=$(stat -c%s "$LOG_FILE" 2>/dev/null || stat -f%z "$LOG_FILE" 2>/dev/null || echo 0)
+        if [ "$size" -gt 51200 ]; then
+            tail -c 25600 "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"
+        fi
+    fi
+}
+
 # ── Main loop ───────────────────────────────────────────────────────
 while true; do
+    rotate_log
     check_and_manage || log_error "Check cycle failed"
     sleep "$INTERVAL"
 done
