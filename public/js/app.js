@@ -146,7 +146,7 @@ const App = (() => {
       <div class="app">
         <nav class="sidebar">
           <div class="sidebar-logo">
-            <span style="font-size:24px">⚽</span>
+            <img src="/img/logo.png" alt="CFB" style="width:32px;height:32px">
             <div>
               <div class="name">${t("app.name")}</div>
               <div class="version">${t("app.version")}</div>
@@ -176,7 +176,7 @@ const App = (() => {
       <div class="login-wrap">
         <form class="login-form" id="loginForm">
           <div class="login-logo">
-            <span style="font-size:32px">⚽</span>
+            <img src="/img/logo.png" alt="CFB" style="width:48px;height:48px">
             <div>
               <h1>${t("app.name")}</h1>
               <div class="sub">${t("auth.subtitle")}</div>
@@ -230,7 +230,7 @@ const App = (() => {
       <div class="login-wrap">
         <form class="login-form" id="setupForm">
           <div class="login-logo">
-            <span style="font-size:32px">⚽</span>
+            <img src="/img/logo.png" alt="CFB" style="width:48px;height:48px">
             <div>
               <h1>${t("auth.setup_title")}</h1>
               <div class="sub">${t("auth.setup_subtitle")}</div>
