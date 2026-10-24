@@ -860,14 +860,11 @@ const App = (() => {
       <div class="card">
         <h2 class="section-sub">${t("about.credits")}</h2>
         <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent-fg);flex-shrink:0">JM</div>
-            <div>
-              <strong>Jose Manuel Pedraja</strong>
-              <div><a href="https://github.com/JoseManuelPedraja/cffootballbypass-docker" target="_blank" rel="noopener">github.com/JoseManuelPedraja/cffootballbypass-docker</a></div>
-            </div>
+          <div>
+            <strong>Jose Manuel Pedraja</strong>
+            <div><a href="https://github.com/JoseManuelPedraja/cffootballbypass-docker" target="_blank" rel="noopener">github.com/JoseManuelPedraja/cffootballbypass-docker</a></div>
           </div>
-          <div style="color:var(--text-secondary);font-size:14px;padding-left:52px">
+          <div style="color:var(--text-secondary);font-size:14px;margin-top:8px">
             <p style="margin:0 0 4px">${t("about.credits_feed")}</p>
             <p style="margin:0 0 4px">${t("about.credits_original")}</p>
             <p style="margin:0">${t("about.credits_community")}</p>
