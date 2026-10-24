@@ -3,10 +3,12 @@
  * CF Football Bypass — DNS Record Manager
  * Updates a single Cloudflare DNS record's proxy status.
  *
- * Usage: php manage_dns.php <domain> <record> <type> <proxy> <api_token> <zone_id>
+ * Usage: php manage_dns.php <domain> <record> <type> <proxy> <api_token> <zone_id> [auth_type] [email]
+ *
+ * Auth types: global (X-Auth-Key + X-Auth-Email), token (Bearer), account_token (Bearer)
  *
  * @author    Jose Manuel Pedraja
- * @copyright 2025 SurMod
+ * @copyright 2025-2026 SurMod
  * @license   GPL-2.0-or-later
  */
 
@@ -20,7 +22,7 @@ define('WHITE', "\033[1;37m");
 define('NC', "\033[0m");
 
 if ($argc < 7) {
-    fwrite(STDERR, RED . "ERROR" . NC . " | Missing arguments. Usage: php manage_dns.php <domain> <record> <type> <proxy> <api_token> <zone_id>\n");
+    fwrite(STDERR, RED . "ERROR" . NC . " | Missing arguments. Usage: php manage_dns.php <domain> <record> <type> <proxy> <api_token> <zone_id> [auth_type] [email]\n");
     exit(1);
 }
 
@@ -30,6 +32,8 @@ $type     = strtoupper($argv[3]);
 $proxy    = filter_var($argv[4], FILTER_VALIDATE_BOOLEAN);
 $apiToken = $argv[5];
 $zoneId   = $argv[6];
+$authType = isset($argv[7]) ? $argv[7] : 'token';
+$email    = isset($argv[8]) ? $argv[8] : '';
 
 if ($record === '@' || empty($record)) {
     $fullname = $domain;
@@ -39,18 +43,23 @@ if ($record === '@' || empty($record)) {
 
 $endpoint = "https://api.cloudflare.com/client/v4/zones/$zoneId/dns_records";
 
+$headers = ['Content-Type: application/json'];
+if ($authType === 'global') {
+    $headers[] = 'X-Auth-Email: ' . $email;
+    $headers[] = 'X-Auth-Key: ' . $apiToken;
+} else {
+    $headers[] = 'Authorization: Bearer ' . $apiToken;
+}
+
 echo GRAY . "   \xe2\x94\x9c\xe2\x94\x80" . NC . " " . BLUE . "\xf0\x9f\x94\x8d Searching" . NC . " " . WHITE . $fullname . NC . GRAY . " (type: $type)" . NC . "\n";
 
 $ch = curl_init("$endpoint?" . http_build_query(['name' => $fullname, 'type' => $type]));
 curl_setopt_array($ch, [
-    CURLOPT_HTTPHEADER => [
-        "Authorization: Bearer $apiToken",
-        "Content-Type: application/json",
-    ],
+    CURLOPT_HTTPHEADER     => $headers,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 15,
     CURLOPT_SSL_VERIFYPEER => true,
-    CURLOPT_USERAGENT      => 'CFB-Docker/2.0',
+    CURLOPT_USERAGENT      => 'CFB-Docker/2.1',
 ]);
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -103,16 +112,13 @@ $payload = json_encode([
 
 $ch = curl_init("$endpoint/$recordId");
 curl_setopt_array($ch, [
-    CURLOPT_HTTPHEADER => [
-        "Authorization: Bearer $apiToken",
-        "Content-Type: application/json",
-    ],
+    CURLOPT_HTTPHEADER     => $headers,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_CUSTOMREQUEST  => 'PUT',
     CURLOPT_POSTFIELDS     => $payload,
     CURLOPT_TIMEOUT        => 15,
     CURLOPT_SSL_VERIFYPEER => true,
-    CURLOPT_USERAGENT      => 'CFB-Docker/2.0',
+    CURLOPT_USERAGENT      => 'CFB-Docker/2.1',
 ]);
 $resp       = curl_exec($ch);
 $updateCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

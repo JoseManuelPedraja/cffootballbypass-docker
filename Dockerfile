@@ -2,7 +2,7 @@ FROM php:8.4-cli-alpine3.22
 
 LABEL maintainer="SurMod"
 LABEL description="CF Football Bypass - Automatic Cloudflare proxy management for La Liga blocks"
-LABEL version="2.0.1"
+LABEL version="2.1.0"
 LABEL org.opencontainers.image.source="https://github.com/SurMod/cffootballbypass-docker"
 
 RUN apk add --no-cache \
@@ -12,7 +12,8 @@ RUN apk add --no-cache \
     bash \
     bind-tools \
     ca-certificates \
-    tzdata
+    tzdata \
+    msmtp
 
 ENV TZ=Europe/Madrid
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -34,12 +35,24 @@ USER appuser
 ENV FEED_URL="https://hayahora.futbol/estado/data.json" \
     DOMAINS="[]" \
     INTERVAL_SECONDS=300 \
+    CF_AUTH_TYPE="token" \
     CF_API_TOKEN="" \
     CF_ZONE_ID="" \
+    CF_EMAIL="" \
+    CF_ACCOUNT_ID="" \
     STALE_THRESHOLD_HOURS=6 \
     MIN_ISPS_BLOCKED=2 \
     FORCE_PROXY_OFF_OVERRIDE=0 \
-    COOLDOWN_MINUTES=60
+    COOLDOWN_MINUTES=60 \
+    LOG_ENABLED=1 \
+    LOG_RETENTION_DAYS=30 \
+    NOTIFY_EMAIL="" \
+    NOTIFY_FROM="cfb@localhost" \
+    SMTP_HOST="" \
+    SMTP_PORT=587 \
+    SMTP_USER="" \
+    SMTP_PASS="" \
+    SMTP_TLS="on"
 
 HEALTHCHECK --interval=60s \
             --timeout=10s \

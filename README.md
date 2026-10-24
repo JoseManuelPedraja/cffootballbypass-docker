@@ -5,7 +5,7 @@
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/harlekesp/cffootballbypass)
 [![PHP](https://img.shields.io/badge/php-%23777BB4.svg?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-GNU-blue.svg?style=for-the-badge)](LICENSE)
-[![Security Scan](https://img.shields.io/badge/security-scanned-success?style=for-the-badge)](https://github.com/harlekesp/cffootballbypass/security)
+[![Security Scan](https://img.shields.io/badge/security-scanned-success?style=for-the-badge)](https://github.com/SurMod/cffootballbypass-docker/security)
 
 **Automatically bypass Spanish football broadcast blocks by intelligently toggling Cloudflare proxy** ⚡
 
@@ -50,28 +50,28 @@ Runs 24/7 without manual intervention
 </td>
 <td width="33%" align="center">
 
-### 🔒 Secure by Design
-Docker secrets + non-root user
+### 🔒 Three Auth Methods
+Global Key, API Token, Account Token
 
 </td>
 <td width="33%" align="center">
 
 ### 🎯 Smart Detection
-Only monitors your specific IPs
+ISP counting, staleness, cooldowns
 
 </td>
 </tr>
 <tr>
 <td width="33%" align="center">
 
-### 📊 Modern Logs
-Color-coded output with emojis
+### 📧 Email Notifications
+SMTP alerts on state changes
 
 </td>
 <td width="33%" align="center">
 
-### 🔄 Auto-Recovery
-Self-healing on failures
+### 📊 File Logging
+JSON logs with automatic rotation
 
 </td>
 <td width="33%" align="center">
@@ -83,6 +83,14 @@ Alpine-based image (~50MB)
 </tr>
 </table>
 
+### What's New in v2.1.0
+
+- **Three Cloudflare authentication methods**: Global API Key, API Token (Bearer), Account API Token
+- **Email notifications**: SMTP-based alerts when bypass activates/deactivates (2-minute throttle)
+- **File logging**: JSON-formatted log file with configurable retention and automatic pruning
+- **Improved domain parsing**: supports both `name` and `domain` keys in DOMAINS JSON
+- **Updated user agent**: `CFB-Docker/2.1`
+
 ---
 
 ## 🚀 Quick Start
@@ -91,7 +99,7 @@ Alpine-based image (~50MB)
 ```bash
 ✅ Docker 20.10+
 ✅ Docker Compose v2+
-✅ Cloudflare API Token (Zone:DNS:Edit)
+✅ Cloudflare API Token or Global API Key
 ✅ Cloudflare Zone ID
 ```
 
@@ -100,11 +108,13 @@ Alpine-based image (~50MB)
 | Credential | Where to find it |
 |-----------|-------------------|
 | **API Token** | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) → Create Token → Edit Zone DNS |
+| **Global API Key** | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) → Global API Key |
 | **Zone ID** | Domain Dashboard → Overview → API section (right column) |
+| **Account ID** | Domain Dashboard → Overview → API section (right column) |
 
 ### 🐳 Step 2: Create `docker-compose.yml`
 
-#### Option A: Using Environment Variables (Simple)
+#### Option A: API Token (Recommended)
 ```yaml
 version: "3.9"
 
@@ -114,36 +124,98 @@ services:
     container_name: cf-football-bypass
     restart: always
     environment:
+      CF_AUTH_TYPE: "token"
       CF_API_TOKEN: "your_token_here"
       CF_ZONE_ID: "your_zone_id_here"
       DOMAINS: '[{"name":"example.com","record":"@","type":"A"}]'
       INTERVAL_SECONDS: 300
     volumes:
       - cflogs:/app/logs
+      - cfdata:/app/data
     networks:
       - private_network
 
 volumes:
   cflogs:
+  cfdata:
 
 networks:
   private_network:
 ```
 
-#### Option B: Using Docker Secrets (Recommended for Production)
+#### Option B: Global API Key
+```yaml
+version: "3.9"
 
-Docker Secrets provide enhanced security by keeping sensitive data in separate files that are securely mounted into the container.
+services:
+  cf-bypass:
+    image: harlekesp/cffootballbypass:latest
+    container_name: cf-football-bypass
+    restart: always
+    environment:
+      CF_AUTH_TYPE: "global"
+      CF_API_TOKEN: "your_global_api_key_here"
+      CF_EMAIL: "your_cloudflare_email@example.com"
+      CF_ZONE_ID: "your_zone_id_here"
+      DOMAINS: '[{"name":"example.com","record":"@","type":"A"}]'
+      INTERVAL_SECONDS: 300
+    volumes:
+      - cflogs:/app/logs
+      - cfdata:/app/data
+    networks:
+      - private_network
+
+volumes:
+  cflogs:
+  cfdata:
+
+networks:
+  private_network:
+```
+
+#### Option C: With Email Notifications
+```yaml
+version: "3.9"
+
+services:
+  cf-bypass:
+    image: harlekesp/cffootballbypass:latest
+    container_name: cf-football-bypass
+    restart: always
+    environment:
+      CF_AUTH_TYPE: "token"
+      CF_API_TOKEN: "your_token_here"
+      CF_ZONE_ID: "your_zone_id_here"
+      DOMAINS: '[{"name":"example.com","record":"@","type":"A"}]'
+      INTERVAL_SECONDS: 300
+      NOTIFY_EMAIL: "admin@example.com"
+      NOTIFY_FROM: "cfb@example.com"
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: 587
+      SMTP_USER: "your_email@gmail.com"
+      SMTP_PASS: "your_app_password"
+      SMTP_TLS: "on"
+    volumes:
+      - cflogs:/app/logs
+      - cfdata:/app/data
+    networks:
+      - private_network
+
+volumes:
+  cflogs:
+  cfdata:
+
+networks:
+  private_network:
+```
+
+#### Option D: Using Docker Secrets (Production)
 
 **Create secret files:**
 ```bash
-# Create secrets directory
 mkdir -p secrets
-
-# Store your credentials securely
 echo "your_cloudflare_api_token_here" > secrets/cf_api_token
 echo "your_cloudflare_zone_id_here" > secrets/cf_zone_id
-
-# Secure the files
 chmod 600 secrets/*
 ```
 
@@ -159,6 +231,7 @@ services:
     environment:
       CF_API_TOKEN_FILE: /run/secrets/cf_api_token
       CF_ZONE_ID_FILE: /run/secrets/cf_zone_id
+      CF_AUTH_TYPE: "token"
       DOMAINS: '[{"name":"example.com","record":"@","type":"A"}]'
       INTERVAL_SECONDS: 300
     secrets:
@@ -166,58 +239,7 @@ services:
       - cf_zone_id
     volumes:
       - cflogs:/app/logs
-    networks:
-      - private_network
-
-secrets:
-  cf_api_token:
-    file: ./cf_api_token
-  cf_zone_id:
-    file: ./cf_zone_id
-
-volumes:
-  cflogs:
-
-networks:
-  private_network:
-```
-
-> **🔒 Security Note:** When using Docker Secrets with `_FILE` suffix:
-> - The container reads credentials from files instead of environment variables
-> - Credentials are stored encrypted in Docker's internal database
-> - Only accessible to authorized containers
-> - Never exposed in logs or `docker inspect` output
-> - Mounted as read-only files in `/run/secrets/`
-> - More compatible with Docker Swarm and orchestration tools
-
-#### Option C: Using `.env` File with Secrets (Hybrid Approach)
-
-You can also use an `.env` file to specify secret file paths:
-
-**Create `.env` file:**
-```bash
-CF_API_TOKEN_FILE=/run/secrets/cf_api_token
-CF_ZONE_ID_FILE=/run/secrets/cf_zone_id
-DOMAINS=[{"name":"example.com","record":"@","type":"A"}]
-INTERVAL_SECONDS=300
-```
-
-**docker-compose.yml:**
-```yaml
-version: "3.9"
-
-services:
-  cf-bypass:
-    image: harlekesp/cffootballbypass:latest
-    container_name: cf-football-bypass
-    restart: always
-    env_file:
-      - .env
-    secrets:
-      - cf_api_token
-      - cf_zone_id
-    volumes:
-      - cflogs:/app/logs
+      - cfdata:/app/data
     networks:
       - private_network
 
@@ -229,6 +251,7 @@ secrets:
 
 volumes:
   cflogs:
+  cfdata:
 
 networks:
   private_network:
@@ -250,48 +273,64 @@ docker logs -f cf-football-bypass
 
 ### Environment Variables
 
+#### Core Settings
+
 | Variable | Description | Required | Default | Example |
 |----------|-------------|:--------:|---------|---------|
-| `CF_API_TOKEN` | Cloudflare API Token | ✅* | - | `aBc123...` |
+| `CF_AUTH_TYPE` | Authentication method | ❌ | `token` | `global`, `token`, `account_token` |
+| `CF_API_TOKEN` | Cloudflare API Key/Token | ✅* | - | `aBc123...` |
 | `CF_API_TOKEN_FILE` | Path to API Token file | ✅* | - | `/run/secrets/cf_api_token` |
 | `CF_ZONE_ID` | Cloudflare Zone ID | ✅* | - | `a1b2c3...` |
 | `CF_ZONE_ID_FILE` | Path to Zone ID file | ✅* | - | `/run/secrets/cf_zone_id` |
+| `CF_EMAIL` | Cloudflare account email | ⚠️ | - | `user@example.com` |
+| `CF_ACCOUNT_ID` | Cloudflare Account ID | ⚠️ | - | `abc123...` |
 | `DOMAINS` | JSON array of domains | ✅ | `[]` | See below ↓ |
 | `INTERVAL_SECONDS` | Check interval (seconds) | ❌ | `300` | `180` |
 
-**\* You must provide EITHER the direct variable OR the `_FILE` version, not both**
+**\* Provide EITHER the direct variable OR the `_FILE` version**
+**⚠️ Required depending on `CF_AUTH_TYPE`**
 
-### 🔐 Credentials Configuration Methods
+#### Bypass Behavior
 
-The container supports **three methods** for providing credentials (in order of priority):
+| Variable | Description | Default | Range |
+|----------|-------------|---------|-------|
+| `STALE_THRESHOLD_HOURS` | Ignore feed data older than this | `6` | 1-72 |
+| `MIN_ISPS_BLOCKED` | Min ISPs blocked to trigger bypass | `2` | 1-20 |
+| `FORCE_PROXY_OFF_OVERRIDE` | Force proxy OFF when general=blocked | `0` | 0 or 1 |
+| `COOLDOWN_MINUTES` | Minutes before re-enabling proxy | `60` | 5-1440 |
 
-1. **`_FILE` Environment Variables** (Highest Priority)
-   - `CF_API_TOKEN_FILE=/run/secrets/cf_api_token`
-   - `CF_ZONE_ID_FILE=/run/secrets/cf_zone_id`
-   - Container reads from the specified file path
-   - **Recommended for production and Docker Swarm**
+#### Logging
 
-2. **Docker Secrets** (Auto-detection)
-   - Automatically checks `/run/secrets/cf_api_token` and `/run/secrets/cf_zone_id`
-   - Works without explicit `_FILE` variables if secrets are mounted
-   - Compatible with Docker Compose and Swarm
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LOG_ENABLED` | Enable file logging | `1` |
+| `LOG_RETENTION_DAYS` | Days to keep log entries | `30` |
 
-3. **Direct Environment Variables** (Lowest Priority)
-   - `CF_API_TOKEN=your_token_here`
-   - `CF_ZONE_ID=your_zone_id_here`
-   - Simple but less secure
+Logs are written to `/app/logs/cfb.log` in JSON format (one entry per line). Mount the `/app/logs` volume to persist them.
 
-**Priority Logic:**
-```
-IF CF_API_TOKEN_FILE is set
-  → Read from file path
-ELSE IF /run/secrets/cf_api_token exists
-  → Read from Docker secret
-ELSE IF CF_API_TOKEN is set
-  → Use environment variable
-ELSE
-  → Error: No credentials found
-```
+#### Email Notifications
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NOTIFY_EMAIL` | Recipient email address | _(disabled)_ |
+| `NOTIFY_FROM` | Sender email address | `cfb@localhost` |
+| `SMTP_HOST` | SMTP server hostname | _(disabled)_ |
+| `SMTP_PORT` | SMTP server port | `587` |
+| `SMTP_USER` | SMTP username | _(none)_ |
+| `SMTP_PASS` | SMTP password | _(none)_ |
+| `SMTP_TLS` | Enable TLS | `on` |
+
+Notifications are sent when bypass state changes (activated/deactivated). A 2-minute throttle prevents burst emails.
+
+### 🔐 Authentication Methods
+
+| Method | `CF_AUTH_TYPE` | Required Variables | Minimum Permissions |
+|--------|:--------------:|--------------------|--------------------|
+| **API Token** | `token` | `CF_API_TOKEN`, `CF_ZONE_ID` | Zone:Read, DNS:Read, DNS:Edit |
+| **Global API Key** | `global` | `CF_API_TOKEN`, `CF_ZONE_ID`, `CF_EMAIL` | Full account access |
+| **Account Token** | `account_token` | `CF_API_TOKEN`, `CF_ZONE_ID`, `CF_ACCOUNT_ID` | Zone:Read, DNS:Read, DNS:Edit |
+
+> **Recommendation**: Use `token` (API Token) with minimal permissions for best security.
 
 ### 📋 DOMAINS Format
 ```json
@@ -316,7 +355,7 @@ ELSE
 
 **Parameters:**
 
-- `name` - Your main domain name
+- `name` (or `domain`) - Your main domain name
 - `record` - Subdomain or `@` for root domain
 - `type` - DNS record type (`A`, `AAAA`, `CNAME`, etc.)
 
@@ -344,8 +383,8 @@ ELSE
        │
        ▼
 ┌─────────────────────────────────┐
-│ 3️⃣  Check for IP matches        │
-│    Is your IP blocked?          │
+│ 3️⃣  Check ISPs & staleness      │
+│    Min ISPs threshold met?      │
 └──────┬──────────────────────────┘
        │
        ▼
@@ -371,23 +410,18 @@ ELSE
          │
          ▼
    ┌──────────┐
-   │ 5️⃣  Sleep │
+   │ 5️⃣  Notify│
+   │ (if email)│
+   └─────┬────┘
+         │
+         ▼
+   ┌──────────┐
+   │ 6️⃣  Sleep │
    │ INTERVAL │
    └─────┬────┘
          │
          └──► (repeat from step 1)
 ```
-
-### 📐 Decision Logic
-
-1. **Fetch public IPs** → Uses `dig @1.1.1.1` (Cloudflare resolver)
-2. **Query feed** → Reads `hayahora.futbol/estado/data.json`
-3. **Check matches** → Compares your IPs with blocked IPs
-4. **Decide action:**
-   - ✅ **No block** → `proxied: true` (Cloudflare enabled)
-   - 🔴 **Blocked** → `proxied: false` (direct server)
-5. **Apply changes** → Updates DNS via Cloudflare API
-6. **Wait** → Sleeps `INTERVAL_SECONDS` and repeats
 
 ---
 
@@ -397,66 +431,43 @@ ELSE
 |---------|----------------|
 | **Immutable feed** | Hardcoded to hayahora.futbol only |
 | **No external code** | Doesn't execute third-party scripts |
-| **Docker Secrets support** | Supports both `_FILE` variables and auto-detection |
+| **Three auth methods** | Global Key, API Token, Account Token |
+| **Docker Secrets support** | `_FILE` variables and auto-detection |
 | **Non-root user** | Runs as UID/GID 1000 (appuser) |
 | **Minimal privileges** | Only DNS permissions on Cloudflare |
-| **Healthcheck** | Verifies connectivity every 30s |
-| **CVE Scanning** | Automatic weekly scans with Trivy |
-| **Updated packages** | Alpine 3.21 base with latest patches |
-
-### 🔒 CVE Status
-
-[![Security Scan](https://github.com/harlekesp/cffootballbypass/actions/workflows/security-scan.yml/badge.svg)](https://github.com/harlekesp/cffootballbypass/actions/workflows/security-scan.yml)
-
-All known CVEs are patched or mitigated. See [docs/CVE-MITIGATION.md](docs/CVE-MITIGATION.md) for details.
+| **IP anonymization** | IPs anonymized in all logs |
+| **Healthcheck** | Verifies connectivity every 60s |
+| **Email throttle** | 2-minute cooldown prevents notification bursts |
 
 ---
 
 ## 📊 Example Logs
+
+### Console Output
 ```log
-╔════════════════════════════════════════════════════════╗
-║  ⚽ CF Football Bypass v2.0                            ║
-║  Automatic Cloudflare Proxy Management                ║
-╚════════════════════════════════════════════════════════╝
+┌─────────────────────────────────────────────┐
+│   CF Football Bypass — Docker v2.1.0        │
+│   Cloudflare proxy management for La Liga   │
+└─────────────────────────────────────────────┘
 
-[2025-01-15 18:30:00] ✅ SUCCESS  │ Configuration loaded successfully
-[2025-01-15 18:30:00] 🔒 SECURITY │ Using file-based credentials (CF_API_TOKEN_FILE)
-[2025-01-15 18:30:00] ℹ️  INFO     │ Check interval: 300s
-[2025-01-15 18:30:00] ℹ️  INFO     │ Feed URL: https://hayahora.futbol/estado/data.json
+[2026-01-15 18:30:00] INFO  │ Feed URL: https://hayahora.futbol/estado/data.json
+[2026-01-15 18:30:00] INFO  │ Domains: 2
+[2026-01-15 18:30:00] INFO  │ Auth type: token
+[2026-01-15 18:30:00] INFO  │ Logging: enabled (30d retention)
+[2026-01-15 18:30:00] INFO  │ Notifications: ad***@ex***.com via smtp.gmail.com
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[2025-01-15 18:30:01] ℹ️  INFO     │ Starting cycle #1
+[2026-01-15 18:30:01] INFO  │ Starting check cycle...
+[2026-01-15 18:30:02] INFO  │ Feed: 3 blocked IPs, 2 ISPs (min: 2), general: true, stale: false
+[2026-01-15 18:30:02] INFO  │ example.com: Proxy OFF (reason: domain_blocked, IPs: 185.199.xxx.xxx)
+[2026-01-15 18:30:03] WARN  │ State changed: bypass ACTIVATED
+[2026-01-15 18:30:03] INFO  │ Notification sent to ad***@ex***.com
+[2026-01-15 18:30:03] INFO  │ Check cycle complete. Next in 300s
+```
 
-[2025-01-15 18:30:01] 🔍 STEP     │ Fetching public IPs from your domains...
-   ├─ ✓ example.com → 185.199.108.153
-   ├─ ✓ www.example.com → 185.199.109.153
-
-[2025-01-15 18:30:02] ✅ SUCCESS  │ IPs obtained: 2 domains monitored
-
-[2025-01-15 18:30:02] 🔍 STEP     │ Querying hayahora.futbol feed...
-[2025-01-15 18:30:03] ✅ SUCCESS  │ Feed retrieved successfully
-
-[2025-01-15 18:30:03] 🔍 STEP     │ Analyzing blocking status...
-   ├─ 🔴 BLOCKED  │ example.com on Movistar (No-IP)
-   ├─ 🟢 FREE     │ www.example.com on Vodafone (Alterna)
-
-[2025-01-15 18:30:04] 🔍 STEP     │ Determining required action...
-[2025-01-15 18:30:04] ⚽ BLOCK    │ Blocks detected: 1 domain(s)
-   ├─ ⚽ example.com
-
-[2025-01-15 18:30:05] 🔄 ACTION   │ 🔓 DISABLE PROXY on Cloudflare...
-
-   ├─ 🔍 Searching example.com (type: A)
-   ├─ ✅ Updated │ example.com 🔒 → 🔓 (IP: 185.199.108.153)
-
-┌─────────────────────────────────────────────────────┐
-│ Cycle #1 Summary                                    │
-├─────────────────────────────────────────────────────┤
-│ Updated: 1  │  No changes: 0  │  Errors: 0          │
-└─────────────────────────────────────────────────────┘
-
-[2025-01-15 18:30:06] ✅ SUCCESS  │ Cycle #1 completed
-[2025-01-15 18:30:06] ℹ️  INFO     │ Next check in 300s...
+### File Log (`/app/logs/cfb.log`)
+```json
+{"time":"2026-01-15 18:30:03","type":"cron","message":"Auto-check","context":{"general":"true","blocked":3,"isps":2,"bypass":"true","reason":"domain_blocked"}}
+{"time":"2026-01-15 18:30:03","type":"email","message":"Notification sent","context":{"to":"ad***@ex***.com"}}
 ```
 
 ---
@@ -466,7 +477,10 @@ All known CVEs are patched or mitigated. See [docs/CVE-MITIGATION.md](docs/CVE-M
 # View real-time logs
 docker logs -f cf-football-bypass
 
-# View last 100 lines
+# View file logs
+docker exec cf-football-bypass cat /app/logs/cfb.log | jq .
+
+# View last 100 console lines
 docker logs --tail 100 cf-football-bypass
 
 # Restart container
@@ -487,8 +501,8 @@ docker exec -it cf-football-bypass sh
 # Verify secrets are mounted
 docker exec cf-football-bypass ls -la /run/secrets/
 
-# Check which credential method is being used
-docker exec cf-football-bypass env | grep CF_
+# Check current state
+docker exec cf-football-bypass cat /app/data/state.json | jq .
 ```
 
 ---
@@ -510,24 +524,48 @@ Some Spanish ISPs block IP ranges during football broadcasts. This container:
 </details>
 
 <details>
-<summary><strong>🔐 What's the difference between <code>_FILE</code> variables and direct secrets?</strong></summary>
+<summary><strong>🔐 Which auth method should I use?</strong></summary>
 
 <br>
 
-**Three methods available:**
+| Method | Security | Setup | Best For |
+|--------|----------|-------|----------|
+| **API Token** | ✅ Best | Medium | Production (recommended) |
+| **Global API Key** | ⚠️ Full access | Easy | Quick setup |
+| **Account Token** | ✅ Good | Medium | Multi-zone management |
 
-| Method | Configuration | When to use |
-|--------|---------------|-------------|
-| **`_FILE` variables** | `CF_API_TOKEN_FILE=/run/secrets/cf_api_token` | Docker Swarm, Kubernetes, explicit control |
-| **Auto-detected secrets** | Secrets mounted at `/run/secrets/` | Docker Compose with secrets (simpler) |
-| **Environment variables** | `CF_API_TOKEN=abc123` | Development, testing, quick setup |
+**API Token** is recommended because it can be scoped to only the permissions needed (Zone:Read, DNS:Read, DNS:Edit) for a specific zone.
 
-**Recommendations:**
-- 🏢 **Production/Swarm**: Use `_FILE` variables for explicit control
-- 🐳 **Docker Compose**: Auto-detected secrets (no `_FILE` needed)
-- 💻 **Development**: Direct environment variables
+</details>
 
-All methods are secure when using Docker secrets. The `_FILE` suffix is a common convention in Docker applications (like MySQL, PostgreSQL) for file-based configuration.
+<details>
+<summary><strong>📧 How do I set up email notifications?</strong></summary>
+
+<br>
+
+**Gmail (with App Password):**
+```yaml
+NOTIFY_EMAIL: "you@gmail.com"
+SMTP_HOST: "smtp.gmail.com"
+SMTP_PORT: 587
+SMTP_USER: "you@gmail.com"
+SMTP_PASS: "your_16_char_app_password"
+SMTP_TLS: "on"
+```
+
+**Custom SMTP:**
+```yaml
+NOTIFY_EMAIL: "admin@yourdomain.com"
+NOTIFY_FROM: "cfb@yourdomain.com"
+SMTP_HOST: "mail.yourdomain.com"
+SMTP_PORT: 587
+SMTP_USER: "notifications@yourdomain.com"
+SMTP_PASS: "password"
+```
+
+You'll receive emails when:
+- Bypass activates (proxy disabled due to football blocks)
+- Bypass deactivates (proxy re-enabled)
 
 </details>
 
@@ -542,22 +580,6 @@ All methods are secure when using Docker secrets. The `_FILE` suffix is a common
 - ✅ Doesn't modify, intercept, or redistribute protected content
 
 It's equivalent to manually changing Cloudflare settings, but automated.
-
-</details>
-
-<details>
-<summary><strong>🚫 What if my server is also blocked?</strong></summary>
-
-<br>
-
-This script **only helps if**:
-- ❌ Your Cloudflare IP is blocked
-- ✅ Your direct server IP is NOT blocked
-
-If both are blocked, you'll need:
-- VPN on your server
-- Server IP change
-- Reverse tunnel (ngrok, Cloudflare Tunnel, etc.)
 
 </details>
 
@@ -584,38 +606,10 @@ If both are blocked, you'll need:
 <br>
 
 The container will:
-1. Retry every **60 seconds**
+1. Use the **locally cached** feed data
 2. **Maintain** your current Cloudflare configuration
 3. Log the error
 4. Auto-recover when the feed returns
-
-</details>
-
-<details>
-<summary><strong>🧪 How can I test it works?</strong></summary>
-
-<br>
-
-**Option 1: Wait for a real match**
-- Check logs during a LaLiga/Champions League match
-- You should see state changes
-
-**Option 2: Manual simulation**
-```bash
-# View current feed status
-curl https://hayahora.futbol/estado/data.json | jq
-```
-
-**Option 3: Check healthcheck logs**
-```bash
-docker inspect --format='{{json .State.Health}}' cf-football-bypass | jq
-```
-
-**Option 4: Verify credential loading**
-```bash
-# Check which method is being used
-docker logs cf-football-bypass | grep "SECURITY"
-```
 
 </details>
 
@@ -644,57 +638,40 @@ You can adjust with `INTERVAL_SECONDS`:
 docker logs cf-football-bypass
 
 # Verify environment variables
-docker exec cf-football-bypass env | grep CF_
-
-# Verify secrets are mounted correctly
-docker exec cf-football-bypass ls -la /run/secrets/
-
-# Test reading secret files
-docker exec cf-football-bypass cat /run/secrets/cf_api_token
+docker exec cf-football-bypass env | grep -E 'CF_|DOMAIN|INTERVAL'
 ```
 
-### Credentials not loading
+### Auth issues
 ```bash
-# Priority check: Which method is the container trying to use?
-docker logs cf-football-bypass | head -20
+# Check which auth type is configured
+docker logs cf-football-bypass | grep "Auth type"
 
-# If using _FILE: Verify file paths
-docker exec cf-football-bypass sh -c 'echo $CF_API_TOKEN_FILE'
-docker exec cf-football-bypass test -f /run/secrets/cf_api_token && echo "File exists" || echo "File missing"
+# For Global API Key: verify email is set
+docker exec cf-football-bypass sh -c 'echo $CF_EMAIL'
 
-# If using direct secrets: Check auto-detection
-docker exec cf-football-bypass ls -la /run/secrets/
+# For Account Token: verify account ID
+docker exec cf-football-bypass sh -c 'echo $CF_ACCOUNT_ID'
+```
 
-# If using env vars: Check they're set
-docker exec cf-football-bypass sh -c 'echo ${CF_API_TOKEN:0:10}...'
+### Email not working
+```bash
+# Check notification config
+docker logs cf-football-bypass | grep "Notifications"
+
+# Test SMTP manually
+docker exec cf-football-bypass sh -c 'echo "Test" | msmtp --debug your@email.com'
 ```
 
 ### Not detecting blocks
 ```bash
 # Verify your IPs are in the feed
-curl -s https://hayahora.futbol/estado/data.json | jq '.data[] | select(.ip=="YOUR_IP")'
+curl -s https://hayahora.futbol/estado/data.json | jq '.ips'
 
 # Check DNS resolution
-docker exec cf-football-bypass dig +short example.com @1.1.1.1
-```
+docker exec cf-football-bypass dig +short example.com
 
-### Healthcheck failing
-```bash
-# Verify connectivity
-docker exec cf-football-bypass curl -v https://hayahora.futbol/estado/data.json
-```
-
-### Secrets permission issues
-```bash
-# Check file permissions (should be readable)
-ls -la secrets/
-
-# Verify secret content (be careful, will display token!)
-cat secrets/cf_api_token
-
-# Inside container
-docker exec cf-football-bypass ls -la /run/secrets/
-docker exec cf-football-bypass cat /run/secrets/cf_api_token
+# Check state file
+docker exec cf-football-bypass cat /app/data/state.json | jq .
 ```
 
 ---
@@ -703,19 +680,11 @@ docker exec cf-football-bypass cat /run/secrets/cf_api_token
 
 Contributions are welcome! You can help by:
 
-- 🐛 Reporting bugs via [Issues](https://github.com/harlekesp/cffootballbypass/issues)
+- 🐛 Reporting bugs via [Issues](https://github.com/SurMod/cffootballbypass-docker/issues)
 - 💡 Suggesting features or improvements
 - 🔧 Submitting Pull Requests
 - ⭐ Starring the repo if you find it useful
 - 📢 Sharing the project
-
-### Pull Request Process
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add: AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ---
 
@@ -728,6 +697,7 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE. See [LICENSE](LIC
 ## 🙏 Acknowledgments
 
 - [hayahora.futbol](https://hayahora.futbol) for maintaining the public feed
+- [David Carrero / Color Vivo](https://github.com/davidcarrero) for the original WordPress plugin (ES Football Bypass for Cloudflare)
 - The Docker and Cloudflare communities
 - All contributors and bug reporters
 
@@ -737,11 +707,10 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE. See [LICENSE](LIC
 
 **Made with ⚽ and ☕ in Spain**
 
-[![GitHub](https://img.shields.io/badge/GitHub-JoseManuelPedraja-181717?style=flat-square&logo=github)](https://github.com/JoseManuelPedraja/cffootballbypass-docker)
+[![GitHub](https://img.shields.io/badge/GitHub-SurMod-181717?style=flat-square&logo=github)](https://github.com/SurMod/cffootballbypass-docker)
 [![Docker Hub](https://img.shields.io/badge/Docker%20Hub-harlekesp-0db7ed?style=flat-square&logo=docker&logoColor=white)](https://hub.docker.com/r/harlekesp/cffootballbypass)
 
 [⬆ Back to top](#-cf-football-bypass)
 
 
 </div>
-

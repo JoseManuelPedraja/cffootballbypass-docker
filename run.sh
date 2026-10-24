@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CF Football Bypass — Docker entrypoint
+# CF Football Bypass — Docker entrypoint v2.1.0
 # Periodically checks football block status and manages Cloudflare DNS proxy.
 set -euo pipefail
 
@@ -41,41 +41,203 @@ anonymize_ip() {
     fi
 }
 
-# ── Read secrets (supports _FILE, /run/secrets/, and env vars) ─────
-read_secret() {
-    local name="$1" file_var="${1}_FILE" value=""
-    # 1. Explicit _FILE variable
-    if [ -n "${!file_var:-}" ] && [ -f "${!file_var}" ]; then
-        value=$(cat "${!file_var}" | tr -d '\n\r')
-        log_info "${GREEN}SECURITY${NC} │ ${name} loaded from ${!file_var}"
-    # 2. Auto-detect Docker secret
-    elif [ -f "/run/secrets/${name,,}" ]; then
-        value=$(cat "/run/secrets/${name,,}" | tr -d '\n\r')
-        log_info "${GREEN}SECURITY${NC} │ ${name} loaded from /run/secrets/${name,,}"
-    # 3. Direct environment variable
-    elif [ -n "${!name:-}" ]; then
-        value="${!name}"
+# ── Resolve secrets (support _FILE env vars and Docker secrets) ────
+resolve_secret() {
+    local name="$1"
+    local file_var="${name}_FILE"
+    local file_path="${!file_var:-}"
+    local direct="${!name:-}"
+
+    if [ -n "$file_path" ] && [ -f "$file_path" ]; then
+        cat "$file_path" | tr -d '\n'
+        return
     fi
-    echo "$value"
+
+    local secret_path="/run/secrets/$(echo "$name" | tr '[:upper:]' '[:lower:]')"
+    if [ -f "$secret_path" ]; then
+        cat "$secret_path" | tr -d '\n'
+        return
+    fi
+
+    echo "$direct"
 }
 
 # ── Configuration ───────────────────────────────────────────────────
 FEED_URL="${FEED_URL:-https://hayahora.futbol/estado/data.json}"
 DOMAINS="${DOMAINS:-[]}"
 INTERVAL="${INTERVAL_SECONDS:-300}"
-CF_API_TOKEN=$(read_secret CF_API_TOKEN)
-CF_ZONE_ID=$(read_secret CF_ZONE_ID)
+CF_AUTH_TYPE="${CF_AUTH_TYPE:-token}"
+CF_API_TOKEN="$(resolve_secret CF_API_TOKEN)"
+CF_ZONE_ID="$(resolve_secret CF_ZONE_ID)"
+CF_EMAIL="${CF_EMAIL:-}"
+CF_ACCOUNT_ID="${CF_ACCOUNT_ID:-}"
 STALE_THRESHOLD_HOURS="${STALE_THRESHOLD_HOURS:-6}"
 MIN_ISPS_BLOCKED="${MIN_ISPS_BLOCKED:-2}"
 FORCE_PROXY_OFF_OVERRIDE="${FORCE_PROXY_OFF_OVERRIDE:-0}"
 COOLDOWN_MINUTES="${COOLDOWN_MINUTES:-60}"
 
+# Logging
+LOG_ENABLED="${LOG_ENABLED:-1}"
+LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-30}"
+
+# Email notifications
+NOTIFY_EMAIL="${NOTIFY_EMAIL:-}"
+NOTIFY_FROM="${NOTIFY_FROM:-cfb@localhost}"
+SMTP_HOST="${SMTP_HOST:-}"
+SMTP_PORT="${SMTP_PORT:-587}"
+SMTP_USER="${SMTP_USER:-}"
+SMTP_PASS="${SMTP_PASS:-}"
+SMTP_TLS="${SMTP_TLS:-on}"
+
 DATA_DIR="/app/data"
 LOG_DIR="/app/logs"
 LOCAL_FEED="$DATA_DIR/data.json"
 STATE_FILE="$DATA_DIR/state.json"
+LOG_FILE="$LOG_DIR/cfb.log"
 
 mkdir -p "$DATA_DIR" "$LOG_DIR"
+
+# ── File logging ───────────────────────────────────────────────────
+log_to_file() {
+    if [ "$LOG_ENABLED" != "1" ]; then return; fi
+    local type="$1" message="$2" context="${3:-}"
+    local ts
+    ts=$(date '+%Y-%m-%d %H:%M:%S')
+    local entry="{\"time\":\"$ts\",\"type\":\"$type\",\"message\":\"$message\""
+    if [ -n "$context" ]; then
+        entry="$entry,\"context\":$context"
+    fi
+    entry="$entry}"
+    echo "$entry" >> "$LOG_FILE"
+}
+
+prune_old_logs() {
+    if [ "$LOG_ENABLED" != "1" ]; then return; fi
+    if [ ! -f "$LOG_FILE" ]; then return; fi
+    local size
+    size=$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)
+    if [ "$size" -lt 10240 ]; then return; fi
+
+    local cutoff
+    cutoff=$(date -d "-${LOG_RETENTION_DAYS} days" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "")
+    if [ -z "$cutoff" ]; then return; fi
+
+    local tmp
+    tmp=$(mktemp)
+    while IFS= read -r line; do
+        local t
+        t=$(echo "$line" | jq -r '.time // empty' 2>/dev/null || echo "")
+        if [ -n "$t" ] && [ "$t" \> "$cutoff" ]; then
+            echo "$line" >> "$tmp"
+        fi
+    done < "$LOG_FILE"
+    mv "$tmp" "$LOG_FILE"
+}
+
+# ── Email notifications ────────────────────────────────────────────
+LAST_EMAIL_SENT=0
+
+configure_msmtp() {
+    if [ -z "$SMTP_HOST" ] || [ -z "$NOTIFY_EMAIL" ]; then return 1; fi
+
+    local conf="/tmp/.msmtprc"
+    cat > "$conf" <<MSMTP
+defaults
+tls            $SMTP_TLS
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /dev/null
+
+account        default
+host           $SMTP_HOST
+port           $SMTP_PORT
+from           $NOTIFY_FROM
+MSMTP
+
+    if [ -n "$SMTP_USER" ]; then
+        echo "auth           on" >> "$conf"
+        echo "user           $SMTP_USER" >> "$conf"
+        echo "password       $SMTP_PASS" >> "$conf"
+    else
+        echo "auth           off" >> "$conf"
+    fi
+
+    chmod 600 "$conf"
+    return 0
+}
+
+send_notification() {
+    local subject="$1" body="$2"
+    if [ -z "$NOTIFY_EMAIL" ]; then return; fi
+
+    local now_ts
+    now_ts=$(date +%s)
+    local throttle=120
+    if [ "$LAST_EMAIL_SENT" -gt 0 ] && [ $((now_ts - LAST_EMAIL_SENT)) -lt "$throttle" ]; then
+        log_debug "Email throttled (${throttle}s cooldown)"
+        return
+    fi
+
+    if [ -n "$SMTP_HOST" ]; then
+        if ! configure_msmtp; then
+            log_warn "SMTP not configured properly"
+            return
+        fi
+        printf "Subject: %s\nFrom: %s\nTo: %s\nContent-Type: text/plain; charset=utf-8\n\n%s\n" \
+            "$subject" "$NOTIFY_FROM" "$NOTIFY_EMAIL" "$body" | \
+            msmtp --file="/tmp/.msmtprc" "$NOTIFY_EMAIL" 2>/dev/null && {
+                LAST_EMAIL_SENT=$now_ts
+                log_info "Notification sent to $(anonymize_ip "$NOTIFY_EMAIL")"
+                log_to_file "email" "Notification sent" "{\"to\":\"$(anonymize_ip "$NOTIFY_EMAIL")\"}"
+            } || {
+                log_warn "Failed to send notification"
+                log_to_file "email" "Notification FAILED" "{\"to\":\"$(anonymize_ip "$NOTIFY_EMAIL")\"}"
+            }
+    else
+        if command -v sendmail >/dev/null 2>&1; then
+            printf "Subject: %s\nFrom: %s\nTo: %s\nContent-Type: text/plain; charset=utf-8\n\n%s\n" \
+                "$subject" "$NOTIFY_FROM" "$NOTIFY_EMAIL" "$body" | \
+                sendmail "$NOTIFY_EMAIL" 2>/dev/null && {
+                    LAST_EMAIL_SENT=$now_ts
+                    log_info "Notification sent via sendmail"
+                } || log_warn "sendmail failed"
+        else
+            log_warn "No email transport available (set SMTP_HOST or install sendmail)"
+        fi
+    fi
+}
+
+notify_state_change() {
+    local active="$1" reason="${2:-}"
+    if [ -z "$NOTIFY_EMAIL" ]; then return; fi
+
+    local domain_list
+    domain_list=$(echo "$DOMAINS" | jq -r '.[].domain // .[].name // empty' 2>/dev/null | head -5 | tr '\n' ', ' | sed 's/,$//')
+
+    if [ "$active" = "true" ]; then
+        send_notification \
+            "[CFB] Cloudflare proxy disabled — football blocks" \
+            "Active IP blocks from La Liga detected.
+Cloudflare proxy has been automatically disabled.
+
+Domains: ${domain_list:-unknown}
+State: Proxy OFF (DNS Only)
+Reason: ${reason}
+
+Proxy will be re-enabled once blocks end and cooldown passes.
+
+-- CF Football Bypass Docker v2.1.0"
+    else
+        send_notification \
+            "[CFB] Cloudflare proxy re-enabled" \
+            "No active La Liga IP blocks detected.
+Cloudflare proxy re-enabled automatically.
+
+Domains: ${domain_list:-unknown}
+State: Proxy ON (CDN)
+
+-- CF Football Bypass Docker v2.1.0"
+    fi
+}
 
 # ── Validate ────────────────────────────────────────────────────────
 if [ -z "$CF_API_TOKEN" ]; then
@@ -85,6 +247,21 @@ fi
 
 if [ -z "$CF_ZONE_ID" ]; then
     log_error "CF_ZONE_ID is required"
+    exit 1
+fi
+
+if ! echo "$CF_AUTH_TYPE" | grep -qE '^(global|token|account_token)$'; then
+    log_warn "Invalid CF_AUTH_TYPE '$CF_AUTH_TYPE', defaulting to 'token'"
+    CF_AUTH_TYPE="token"
+fi
+
+if [ "$CF_AUTH_TYPE" = "global" ] && [ -z "$CF_EMAIL" ]; then
+    log_error "CF_EMAIL is required for Global API Key authentication"
+    exit 1
+fi
+
+if [ "$CF_AUTH_TYPE" = "account_token" ] && [ -z "$CF_ACCOUNT_ID" ]; then
+    log_error "CF_ACCOUNT_ID is required for Account API Token authentication"
     exit 1
 fi
 
@@ -119,7 +296,7 @@ fetch_feed() {
 
     http_code=$(curl -s -o "$tmp" -w '%{http_code}' \
         --max-time 25 \
-        --user-agent "CFB-Docker/2.0" \
+        --user-agent "CFB-Docker/2.1" \
         "$FEED_URL" 2>/dev/null) || true
 
     if [ "$http_code" = "200" ] && jq -e . "$tmp" > /dev/null 2>&1; then
@@ -145,6 +322,7 @@ check_and_manage() {
 
     if ! fetch_feed; then
         log_error "Cannot proceed without feed data"
+        log_to_file "error" "Feed unavailable"
         return
     fi
 
@@ -208,6 +386,9 @@ check_and_manage() {
     last_change_ts=$(echo "$state" | jq -r '.last_change // 0')
     now_ts=$(date +%s)
     cooldown_seconds=$((COOLDOWN_MINUTES * 60))
+
+    local any_disabled=false
+    local last_reason="domain_clear"
 
     # Process each domain
     for i in $(seq 0 $((DOMAIN_COUNT - 1))); do
@@ -273,6 +454,8 @@ check_and_manage() {
         local desired_proxy=true
         if [ "$should_disable" = "true" ]; then
             desired_proxy=false
+            any_disabled=true
+            last_reason="$reason"
         fi
 
         local anon_ips
@@ -284,16 +467,14 @@ check_and_manage() {
             log_info "${GREEN}${fullname}${NC}: Proxy ON (domain clear)"
         fi
 
-        php /app/manage_dns.php "$domain" "$record_name" "$record_type" "$desired_proxy" "$CF_API_TOKEN" "$CF_ZONE_ID"
+        php /app/manage_dns.php "$domain" "$record_name" "$record_type" "$desired_proxy" \
+            "$CF_API_TOKEN" "$CF_ZONE_ID" "$CF_AUTH_TYPE" "$CF_EMAIL"
     done
 
     # Update state
     local new_active=false
-    if echo "$DOMAINS" | jq -e 'length > 0' > /dev/null 2>&1; then
-        # Use the last domain's decision (simplified — in practice all domains share the same feed)
-        if [ "$should_disable" = "true" ]; then
-            new_active=true
-        fi
+    if [ "$any_disabled" = "true" ]; then
+        new_active=true
     fi
 
     local new_state
@@ -310,44 +491,45 @@ check_and_manage() {
     if [ "$new_active" != "$prev_active" ]; then
         if [ "$new_active" = "true" ]; then
             log_warn "State changed: bypass ACTIVATED"
+            notify_state_change "true" "$last_reason"
         else
             log_info "State changed: bypass DEACTIVATED, proxy restored"
+            notify_state_change "false"
         fi
     fi
+
+    log_to_file "cron" "Auto-check" "{\"general\":\"${general_blocked}\",\"blocked\":${blocked_count},\"isps\":${isp_count},\"bypass\":\"${new_active}\",\"reason\":\"${last_reason}\"}"
 
     log_info "Check cycle complete. Next in ${INTERVAL}s"
 }
 
 # ── Banner ──────────────────────────────────────────────────────────
 echo -e "${WHITE}┌─────────────────────────────────────────────┐${NC}"
-echo -e "${WHITE}│   CF Football Bypass — Docker v2.0.1        │${NC}"
+echo -e "${WHITE}│   CF Football Bypass — Docker v2.1.0        │${NC}"
 echo -e "${WHITE}│   Cloudflare proxy management for La Liga   │${NC}"
 echo -e "${WHITE}└─────────────────────────────────────────────┘${NC}"
 echo ""
 log_info "Feed URL: ${FEED_URL}"
 log_info "Domains: ${DOMAIN_COUNT}"
 log_info "Interval: ${INTERVAL}s"
+log_info "Auth type: ${CF_AUTH_TYPE}"
 log_info "Zone ID: ${CF_ZONE_ID:0:8}***"
 log_info "Stale threshold: ${STALE_THRESHOLD_HOURS}h"
 log_info "Min ISPs: ${MIN_ISPS_BLOCKED}"
 log_info "Force override: ${FORCE_PROXY_OFF_OVERRIDE}"
 log_info "Cooldown: ${COOLDOWN_MINUTES}min"
+log_info "Logging: $([ "$LOG_ENABLED" = "1" ] && echo "enabled (${LOG_RETENTION_DAYS}d retention)" || echo "disabled")"
+if [ -n "$NOTIFY_EMAIL" ]; then
+    log_info "Notifications: $(anonymize_ip "$NOTIFY_EMAIL") via ${SMTP_HOST:-sendmail}"
+else
+    log_info "Notifications: disabled"
+fi
 echo ""
 
-# ── Log rotation (keep last 50KB) ──────────────────────────────────
-rotate_log() {
-    if [ -f "$LOG_FILE" ]; then
-        local size
-        size=$(stat -c%s "$LOG_FILE" 2>/dev/null || stat -f%z "$LOG_FILE" 2>/dev/null || echo 0)
-        if [ "$size" -gt 51200 ]; then
-            tail -c 25600 "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"
-        fi
-    fi
-}
+prune_old_logs
 
 # ── Main loop ───────────────────────────────────────────────────────
 while true; do
-    rotate_log
     check_and_manage || log_error "Check cycle failed"
     sleep "$INTERVAL"
 done
