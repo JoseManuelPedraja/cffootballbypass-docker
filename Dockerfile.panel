@@ -1,0 +1,31 @@
+FROM node:20-alpine
+
+LABEL org.opencontainers.image.source="https://github.com/SurMod/cffootballbypass-docker"
+LABEL org.opencontainers.image.title="CF Football Bypass Panel"
+LABEL org.opencontainers.image.description="Monitoring dashboard for CF Football Bypass"
+
+RUN apk add --no-cache tini
+
+WORKDIR /app
+
+COPY package.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY server/ ./server/
+COPY public/ ./public/
+COPY locales/ ./locales/
+
+RUN mkdir -p /app/data && chown -R node:node /app
+
+USER node
+
+ENV CFB_PORT=3001 \
+    CFB_DATA_DIR=/app/data \
+    NODE_ENV=production
+
+EXPOSE 3001
+
+VOLUME ["/app/data"]
+
+ENTRYPOINT ["tini", "--"]
+CMD ["node", "server/server.js"]

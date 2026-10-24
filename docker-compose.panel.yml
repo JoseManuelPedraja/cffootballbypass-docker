@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  panel:
+    build:
+      context: .
+      dockerfile: Dockerfile.panel
+    container_name: cfb-panel
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - panel-data:/app/data
+    environment:
+      - CFB_PORT=3001
+      # - CFB_SESSION_SECRET=change-me-to-a-random-string
+      # - CFB_TRUST_PROXY=true
+      # - CFB_LANGUAGE=es
+    # secrets:
+    #   - cf_api_token
+    #   - cf_zone_id
+
+  # Optional: the original bypass container managed by the panel
+  # bypass:
+  #   image: ghcr.io/surmod/cffootballbypass-docker:latest
+  #   container_name: cfb-bypass
+  #   restart: unless-stopped
+  #   environment:
+  #     - CF_API_TOKEN_FILE=/run/secrets/cf_api_token
+  #     - CF_ZONE_ID_FILE=/run/secrets/cf_zone_id
+  #     - DOMAINS=example.com
+  #   secrets:
+  #     - cf_api_token
+  #     - cf_zone_id
+
+volumes:
+  panel-data:
+
+# secrets:
+#   cf_api_token:
+#     file: ./secrets/cf_api_token.txt
+#   cf_zone_id:
+#     file: ./secrets/cf_zone_id.txt
