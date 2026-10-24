@@ -2,7 +2,7 @@
 
 # ⚽ CF Football Bypass
 
-[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/harlekesp/cffootballbypass)
+[![GHCR](https://img.shields.io/badge/ghcr.io-%23181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/SurMod/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
 [![PHP](https://img.shields.io/badge/php-%23777BB4.svg?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-GNU-blue.svg?style=for-the-badge)](LICENSE)
 [![Security Scan](https://img.shields.io/badge/security-scanned-success?style=for-the-badge)](https://github.com/SurMod/cffootballbypass-docker/security)
@@ -120,7 +120,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: harlekesp/cffootballbypass:latest
+    image: ghcr.io/surmod/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -149,7 +149,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: harlekesp/cffootballbypass:latest
+    image: ghcr.io/surmod/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -179,7 +179,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: harlekesp/cffootballbypass:latest
+    image: ghcr.io/surmod/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -225,7 +225,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: harlekesp/cffootballbypass:latest
+    image: ghcr.io/surmod/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -708,7 +708,7 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE. See [LICENSE](LIC
 **Made with ⚽ and ☕ in Spain**
 
 [![GitHub](https://img.shields.io/badge/GitHub-SurMod-181717?style=flat-square&logo=github)](https://github.com/SurMod/cffootballbypass-docker)
-[![Docker Hub](https://img.shields.io/badge/Docker%20Hub-harlekesp-0db7ed?style=flat-square&logo=docker&logoColor=white)](https://hub.docker.com/r/harlekesp/cffootballbypass)
+[![GHCR](https://img.shields.io/badge/GHCR-SurMod-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/SurMod/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
 
 [⬆ Back to top](#-cf-football-bypass)
 
