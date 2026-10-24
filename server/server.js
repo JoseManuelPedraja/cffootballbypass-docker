@@ -68,6 +68,7 @@ async function main() {
           connectSrc: ["'self'", "wss:", "ws:"],
         },
       },
+      hsts: false,
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     })
   );
