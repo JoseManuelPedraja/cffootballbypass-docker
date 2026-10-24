@@ -54,6 +54,11 @@ ENV FEED_URL="https://hayahora.futbol/estado/data.json" \
     SMTP_PASS="" \
     SMTP_TLS="on"
 
+# All sensitive variables support Docker secrets via _FILE suffix:
+# CF_API_TOKEN_FILE, CF_ZONE_ID_FILE, CF_EMAIL_FILE, CF_ACCOUNT_ID_FILE,
+# DOMAINS_FILE, NOTIFY_EMAIL_FILE, SMTP_HOST_FILE, SMTP_USER_FILE, SMTP_PASS_FILE
+# Or mount to /run/secrets/<lowercase_name> (e.g. /run/secrets/cf_api_token)
+
 HEALTHCHECK --interval=60s \
             --timeout=10s \
             --start-period=15s \

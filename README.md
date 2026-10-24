@@ -211,11 +211,33 @@ networks:
 
 #### Option D: Using Docker Secrets (Production)
 
+All sensitive variables support Docker secrets via three methods:
+1. **`_FILE` suffix**: Set `CF_API_TOKEN_FILE=/run/secrets/cf_api_token` to read the value from that file
+2. **Auto-detection**: Mount to `/run/secrets/<lowercase_name>` (e.g. `/run/secrets/cf_api_token`) — detected automatically
+3. **Direct env var**: The standard `CF_API_TOKEN=value` still works as fallback
+
+**Variables that support secrets:**
+
+| Variable | Secret name | `_FILE` variant |
+|----------|------------|-----------------|
+| `CF_API_TOKEN` | `cf_api_token` | `CF_API_TOKEN_FILE` |
+| `CF_ZONE_ID` | `cf_zone_id` | `CF_ZONE_ID_FILE` |
+| `CF_EMAIL` | `cf_email` | `CF_EMAIL_FILE` |
+| `CF_ACCOUNT_ID` | `cf_account_id` | `CF_ACCOUNT_ID_FILE` |
+| `DOMAINS` | `domains` | `DOMAINS_FILE` |
+| `NOTIFY_EMAIL` | `notify_email` | `NOTIFY_EMAIL_FILE` |
+| `SMTP_HOST` | `smtp_host` | `SMTP_HOST_FILE` |
+| `SMTP_USER` | `smtp_user` | `SMTP_USER_FILE` |
+| `SMTP_PASS` | `smtp_pass` | `SMTP_PASS_FILE` |
+
+> **Priority**: `_FILE` env var → `/run/secrets/<name>` auto-detection → direct env var
+
 **Create secret files:**
 ```bash
 mkdir -p secrets
 echo "your_cloudflare_api_token_here" > secrets/cf_api_token
 echo "your_cloudflare_zone_id_here" > secrets/cf_zone_id
+echo "smtp_password_here" > secrets/smtp_pass
 chmod 600 secrets/*
 ```
 
@@ -229,14 +251,18 @@ services:
     container_name: cf-football-bypass
     restart: always
     environment:
-      CF_API_TOKEN_FILE: /run/secrets/cf_api_token
-      CF_ZONE_ID_FILE: /run/secrets/cf_zone_id
       CF_AUTH_TYPE: "token"
       DOMAINS: '[{"name":"example.com","record":"@","type":"A"}]'
       INTERVAL_SECONDS: 300
+      NOTIFY_EMAIL: "admin@example.com"
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: 587
+      SMTP_TLS: "on"
     secrets:
       - cf_api_token
       - cf_zone_id
+      - smtp_user
+      - smtp_pass
     volumes:
       - cflogs:/app/logs
       - cfdata:/app/data
@@ -248,6 +274,10 @@ secrets:
     file: ./secrets/cf_api_token
   cf_zone_id:
     file: ./secrets/cf_zone_id
+  smtp_user:
+    file: ./secrets/smtp_user
+  smtp_pass:
+    file: ./secrets/smtp_pass
 
 volumes:
   cflogs:
@@ -283,7 +313,9 @@ docker logs -f cf-football-bypass
 | `CF_ZONE_ID` | Cloudflare Zone ID | ✅* | - | `a1b2c3...` |
 | `CF_ZONE_ID_FILE` | Path to Zone ID file | ✅* | - | `/run/secrets/cf_zone_id` |
 | `CF_EMAIL` | Cloudflare account email | ⚠️ | - | `user@example.com` |
+| `CF_EMAIL_FILE` | Path to email file | ⚠️ | - | `/run/secrets/cf_email` |
 | `CF_ACCOUNT_ID` | Cloudflare Account ID | ⚠️ | - | `abc123...` |
+| `CF_ACCOUNT_ID_FILE` | Path to Account ID file | ⚠️ | - | `/run/secrets/cf_account_id` |
 | `DOMAINS` | JSON array of domains | ✅ | `[]` | See below ↓ |
 | `INTERVAL_SECONDS` | Check interval (seconds) | ❌ | `300` | `180` |
 
@@ -319,6 +351,8 @@ Logs are written to `/app/logs/cfb.log` in JSON format (one entry per line). Mou
 | `SMTP_USER` | SMTP username | _(none)_ |
 | `SMTP_PASS` | SMTP password | _(none)_ |
 | `SMTP_TLS` | Enable TLS | `on` |
+
+> **🔐 All sensitive email variables support Docker secrets:** `NOTIFY_EMAIL_FILE`, `SMTP_HOST_FILE`, `SMTP_USER_FILE`, `SMTP_PASS_FILE`
 
 Notifications are sent when bypass state changes (activated/deactivated). A 2-minute throttle prevents burst emails.
 
@@ -432,7 +466,7 @@ Notifications are sent when bypass state changes (activated/deactivated). A 2-mi
 | **Immutable feed** | Hardcoded to hayahora.futbol only |
 | **No external code** | Doesn't execute third-party scripts |
 | **Three auth methods** | Global Key, API Token, Account Token |
-| **Docker Secrets support** | `_FILE` variables and auto-detection |
+| **Docker Secrets support** | All 9 sensitive vars support `_FILE` + auto-detection |
 | **Non-root user** | Runs as UID/GID 1000 (appuser) |
 | **Minimal privileges** | Only DNS permissions on Cloudflare |
 | **IP anonymization** | IPs anonymized in all logs |
