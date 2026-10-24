@@ -86,9 +86,11 @@ Alpine-based image (~50MB)
 ### What's New in v2.1.0
 
 - **Three Cloudflare authentication methods**: Global API Key, API Token (Bearer), Account API Token
+- **Docker Secrets for all sensitive variables**: 9 variables support `_FILE`, `/run/secrets/` auto-detection, and direct env var
 - **Email notifications**: SMTP-based alerts when bypass activates/deactivates (2-minute throttle)
 - **File logging**: JSON-formatted log file with configurable retention and automatic pruning
 - **Improved domain parsing**: supports both `name` and `domain` keys in DOMAINS JSON
+- **GitHub Container Registry**: image published to `ghcr.io/surmod/cffootballbypass-docker`
 - **Updated user agent**: `CFB-Docker/2.1`
 
 ---
@@ -316,7 +318,9 @@ docker logs -f cf-football-bypass
 | `CF_EMAIL_FILE` | Path to email file | ⚠️ | - | `/run/secrets/cf_email` |
 | `CF_ACCOUNT_ID` | Cloudflare Account ID | ⚠️ | - | `abc123...` |
 | `CF_ACCOUNT_ID_FILE` | Path to Account ID file | ⚠️ | - | `/run/secrets/cf_account_id` |
-| `DOMAINS` | JSON array of domains | ✅ | `[]` | See below ↓ |
+| `DOMAINS` | JSON array of domains | ✅* | `[]` | See below ↓ |
+| `DOMAINS_FILE` | Path to domains JSON file | ✅* | - | `/run/secrets/domains` |
+| `FEED_URL` | Block status feed URL | ❌ | `https://hayahora.futbol/estado/data.json` | - |
 | `INTERVAL_SECONDS` | Check interval (seconds) | ❌ | `300` | `180` |
 
 **\* Provide EITHER the direct variable OR the `_FILE` version**
