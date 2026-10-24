@@ -97,6 +97,8 @@ Alpine-based image (~50MB)
 
 ## 🖥️ Panel v3.0 (dev)
 
+<img width="1919" height="916" alt="imagen" src="https://github.com/user-attachments/assets/7df34000-8330-42db-af36-8ff0eab20171" />
+
 > **Branch `dev`** — monitoring dashboard inspired by Uptime Kuma.
 
 ```bash
