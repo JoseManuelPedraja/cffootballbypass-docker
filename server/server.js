@@ -59,6 +59,7 @@ async function main() {
   app.use(
     helmet({
       contentSecurityPolicy: {
+        useDefaults: false,
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
