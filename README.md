@@ -3,13 +3,13 @@
 # ⚽ CF Football Bypass
 
 [![GHCR](https://img.shields.io/badge/ghcr.io-%23181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/SurMod/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
-[![PHP](https://img.shields.io/badge/php-%23777BB4.svg?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
+[![Node.js](https://img.shields.io/badge/node.js-20+-339933.svg?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-GNU-blue.svg?style=for-the-badge)](LICENSE)
 [![Security Scan](https://img.shields.io/badge/security-scanned-success?style=for-the-badge)](https://github.com/SurMod/cffootballbypass-docker/security)
 
 **Automatically bypass Spanish football broadcast blocks by intelligently toggling Cloudflare proxy** ⚡
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Configuration](#️-configuration) • [Security](#️-security) • [FAQ](#-faq)
+[Features](#-features) • [Quick Start](#-quick-start) • [Panel v3.0](#-panel-v30-dev) • [Configuration](#️-configuration) • [Security](#️-security) • [FAQ](#-faq)
 
 </div>
 
@@ -92,6 +92,78 @@ Alpine-based image (~50MB)
 - **Improved domain parsing**: supports both `name` and `domain` keys in DOMAINS JSON
 - **GitHub Container Registry**: image published to `ghcr.io/surmod/cffootballbypass-docker`
 - **Updated user agent**: `CFB-Docker/2.1`
+
+---
+
+## 🖥️ Panel v3.0 (dev)
+
+> **Branch `dev`** — monitoring dashboard inspired by Uptime Kuma.
+
+```bash
+docker pull ghcr.io/surmod/cffootballbypass-panel:dev
+docker run -d -p 3001:3001 -v cfb-data:/app/data ghcr.io/surmod/cffootballbypass-panel:dev
+```
+
+Open `http://localhost:3001` — first run shows a setup wizard.
+
+### Panel highlights
+
+| Feature | Detail |
+|---------|--------|
+| **Dashboard** | Real-time bypass status, feed stats, DNS records, mode control |
+| **Dark / Light mode** | CSS custom properties, auto or manual toggle |
+| **2FA** | TOTP mandatory support (Google Authenticator, Authy) |
+| **15 notification providers** | Telegram, Discord, Slack, Email, Webhook, Pushover, Gotify, ntfy, Teams, Signal, PagerDuty, Twilio SMS, Matrix, Google Chat, Apprise (80+ services) |
+| **Multi-DB** | SQLite (default), MySQL/MariaDB, PostgreSQL |
+| **Multi-account Cloudflare** | Manage multiple CF accounts/zones from one panel |
+| **Prometheus metrics** | `/metrics` endpoint for Grafana, auth via API key |
+| **API keys** | Granular permissions: read, write, metrics, admin |
+| **i18n** | Spanish + English built-in, community translations via JSON |
+| **Reverse proxy** | nginx, Traefik, Caddy support |
+| **Security** | Helmet CSP, rate limiting, bcrypt, AES-256-GCM encrypted secrets, audit log |
+
+### Panel environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CFB_PORT` | `3001` | HTTP port |
+| `CFB_DATA_DIR` | `/app/data` | Persistent data directory |
+| `CFB_SESSION_SECRET` | auto-generated | Session encryption key |
+| `CFB_TRUST_PROXY` | `false` | Set `true` behind nginx/Traefik/Caddy |
+| `CFB_DB_TYPE` | `sqlite` | Database: `sqlite`, `mysql`, `mariadb`, `postgres` |
+| `CFB_DB_URL` | — | Full connection URL (alternative to individual vars) |
+| `CFB_DB_HOST` | `localhost` | Database host (MySQL/PostgreSQL) |
+| `CFB_DB_PORT` | `3306`/`5432` | Database port |
+| `CFB_DB_USER` | `cfb` | Database user |
+| `CFB_DB_PASS` | — | Database password |
+| `CFB_DB_NAME` | `cfb_panel` | Database name |
+| `ADMIN_PASSWORD` | — | Auto-create admin user on first run |
+
+### Panel with MySQL example
+
+```yaml
+services:
+  panel:
+    image: ghcr.io/surmod/cffootballbypass-panel:dev
+    ports: ["3001:3001"]
+    environment:
+      CFB_DB_TYPE: mysql
+      CFB_DB_HOST: db
+      CFB_DB_USER: cfb
+      CFB_DB_PASS: secret
+      CFB_DB_NAME: cfb_panel
+    depends_on: [db]
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: cfb_panel
+      MARIADB_USER: cfb
+      MARIADB_PASSWORD: secret
+    volumes: [db-data:/var/lib/mysql]
+volumes:
+  db-data:
+```
 
 ---
 

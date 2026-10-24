@@ -10,50 +10,49 @@ function apiRoutes(db, auth, bypass, notifications) {
   const requireSession = auth.requireAuth();
 
   // ── Status (public for API keys) ──────────────────────────────
-  router.get("/status", (req, res) => {
-    if (req.session?.userId || req.headers.authorization) {
-      if (!req.session?.userId) {
-        const key = req.headers.authorization?.replace("Bearer ", "");
-        if (!key || !db.validateApiKey(key)) {
-          return res.status(401).json({ error: "No autenticado" });
-        }
-      }
+  router.get("/status", async (req, res) => {
+    if (req.session?.userId) {
       return res.json(bypass.getStatus());
+    }
+    if (req.headers.authorization) {
+      const key = req.headers.authorization.replace("Bearer ", "");
+      const apiKey = await db.validateApiKey(key);
+      if (apiKey) return res.json(bypass.getStatus());
     }
     res.status(401).json({ error: "No autenticado" });
   });
 
   // ── Domains ────────────────────────────────────────────────────
-  router.get("/domains", requireSession, (req, res) => {
-    res.json(db.getDomains());
+  router.get("/domains", requireSession, async (req, res) => {
+    res.json(await db.getDomains());
   });
 
-  router.post("/domains", requireSession, (req, res) => {
-    const { domain, record, type } = req.body;
+  router.post("/domains", requireSession, async (req, res) => {
+    const { domain, record, type, cf_credential_id } = req.body;
     if (!domain) return res.status(400).json({ error: "Dominio requerido" });
-    const d = db.addDomain(domain, record, type);
-    db.audit(req.session.userId, "domain_added", domain, req.ip);
+    const d = await db.addDomain(domain, record, type, cf_credential_id);
+    await db.audit(req.session.userId, "domain_added", domain, req.ip);
     res.json(d);
   });
 
-  router.put("/domains/:id", requireSession, (req, res) => {
-    db.updateDomain(parseInt(req.params.id, 10), req.body);
-    db.audit(req.session.userId, "domain_updated", req.body.domain, req.ip);
+  router.put("/domains/:id", requireSession, async (req, res) => {
+    await db.updateDomain(parseInt(req.params.id, 10), req.body);
+    await db.audit(req.session.userId, "domain_updated", req.body.domain, req.ip);
     res.json({ ok: true });
   });
 
-  router.delete("/domains/:id", requireSession, (req, res) => {
-    db.deleteDomain(parseInt(req.params.id, 10));
-    db.audit(req.session.userId, "domain_deleted", req.params.id, req.ip);
+  router.delete("/domains/:id", requireSession, async (req, res) => {
+    await db.deleteDomain(parseInt(req.params.id, 10));
+    await db.audit(req.session.userId, "domain_deleted", req.params.id, req.ip);
     res.json({ ok: true });
   });
 
   // ── Settings ───────────────────────────────────────────────────
-  router.get("/settings", requireSession, (req, res) => {
-    res.json(db.getAllSettings());
+  router.get("/settings", requireSession, async (req, res) => {
+    res.json(await db.getAllSettings());
   });
 
-  router.put("/settings", requireSession, (req, res) => {
+  router.put("/settings", requireSession, async (req, res) => {
     const allowed = [
       "interval_seconds", "stale_threshold_hours", "min_isps_blocked",
       "force_proxy_off_override", "cooldown_minutes", "feed_url",
@@ -62,17 +61,17 @@ function apiRoutes(db, auth, bypass, notifications) {
     ];
     for (const [key, value] of Object.entries(req.body)) {
       if (allowed.includes(key)) {
-        db.setSetting(key, value);
+        await db.setSetting(key, value);
       }
     }
-    db.audit(req.session.userId, "settings_changed", JSON.stringify(req.body), req.ip);
+    await db.audit(req.session.userId, "settings_changed", JSON.stringify(req.body), req.ip);
     bypass.restart();
     res.json({ ok: true });
   });
 
   // ── Cloudflare credentials (multi-account) ─────────────────────
-  router.get("/cloudflare", requireSession, (req, res) => {
-    const all = db.getAllCfCredentials();
+  router.get("/cloudflare", requireSession, async (req, res) => {
+    const all = await db.getAllCfCredentials();
     res.json(all.map((c) => ({
       id: c.id,
       label: c.label,
@@ -84,20 +83,20 @@ function apiRoutes(db, auth, bypass, notifications) {
     })));
   });
 
-  router.put("/cloudflare", requireSession, (req, res) => {
+  router.put("/cloudflare", requireSession, async (req, res) => {
     const { id, label, auth_type, api_token, zone_id, email, account_id } = req.body;
     if (!api_token || !zone_id) {
       return res.status(400).json({ error: "Token y Zone ID requeridos" });
     }
-    const credId = db.saveCfCredentials({ id, label, auth_type, api_token, zone_id, email, account_id });
-    db.audit(req.session.userId, "cf_credentials_changed", `${label || "Default"} (${auth_type})`, req.ip);
+    const credId = await db.saveCfCredentials({ id, label, auth_type, api_token, zone_id, email, account_id });
+    await db.audit(req.session.userId, "cf_credentials_changed", `${label || "Default"} (${auth_type})`, req.ip);
     bypass.restart();
     res.json({ ok: true, id: credId });
   });
 
-  router.delete("/cloudflare/:id", requireSession, (req, res) => {
-    db.deleteCfCredential(parseInt(req.params.id, 10));
-    db.audit(req.session.userId, "cf_credential_deleted", req.params.id, req.ip);
+  router.delete("/cloudflare/:id", requireSession, async (req, res) => {
+    await db.deleteCfCredential(parseInt(req.params.id, 10));
+    await db.audit(req.session.userId, "cf_credential_deleted", req.params.id, req.ip);
     bypass.restart();
     res.json({ ok: true });
   });
@@ -114,22 +113,22 @@ function apiRoutes(db, auth, bypass, notifications) {
   });
 
   // ── Bypass control ─────────────────────────────────────────────
-  router.post("/bypass/mode", requireSession, (req, res) => {
+  router.post("/bypass/mode", requireSession, async (req, res) => {
     const { mode } = req.body;
     bypass.setMode(mode);
-    db.audit(req.session.userId, "mode_changed", mode, req.ip);
+    await db.audit(req.session.userId, "mode_changed", mode, req.ip);
     res.json({ ok: true });
   });
 
   router.post("/bypass/check", requireSession, async (req, res) => {
     await bypass.runCheck();
-    db.audit(req.session.userId, "manual_check", null, req.ip);
+    await db.audit(req.session.userId, "manual_check", null, req.ip);
     res.json(bypass.getStatus());
   });
 
   // ── Notifications ──────────────────────────────────────────────
-  router.get("/notifications", requireSession, (req, res) => {
-    const list = db.getNotifications().map((n) => {
+  router.get("/notifications", requireSession, async (req, res) => {
+    const list = (await db.getNotifications()).map((n) => {
       const events = [];
       if (n.on_bypass_activate) events.push("bypass_activate");
       if (n.on_bypass_deactivate) events.push("bypass_deactivate");
@@ -144,7 +143,7 @@ function apiRoutes(db, auth, bypass, notifications) {
     res.json(NotificationManager.getProviderTypes());
   });
 
-  router.post("/notifications", requireSession, (req, res) => {
+  router.post("/notifications", requireSession, async (req, res) => {
     const data = { ...req.body };
     if (Array.isArray(data.events)) {
       data.on_bypass_activate = data.events.includes("bypass_activate") ? 1 : 0;
@@ -152,20 +151,20 @@ function apiRoutes(db, auth, bypass, notifications) {
       data.on_error = data.events.includes("error") ? 1 : 0;
       data.on_feed_stale = data.events.includes("feed_stale") ? 1 : 0;
     }
-    const n = db.addNotification(data);
-    db.audit(req.session.userId, "notification_added", `${data.type}: ${data.name}`, req.ip);
+    const n = await db.addNotification(data);
+    await db.audit(req.session.userId, "notification_added", `${data.type}: ${data.name}`, req.ip);
     res.json(n);
   });
 
-  router.put("/notifications/:id", requireSession, (req, res) => {
-    db.updateNotification(parseInt(req.params.id, 10), req.body);
-    db.audit(req.session.userId, "notification_updated", req.body.name, req.ip);
+  router.put("/notifications/:id", requireSession, async (req, res) => {
+    await db.updateNotification(parseInt(req.params.id, 10), req.body);
+    await db.audit(req.session.userId, "notification_updated", req.body.name, req.ip);
     res.json({ ok: true });
   });
 
-  router.delete("/notifications/:id", requireSession, (req, res) => {
-    db.deleteNotification(parseInt(req.params.id, 10));
-    db.audit(req.session.userId, "notification_deleted", req.params.id, req.ip);
+  router.delete("/notifications/:id", requireSession, async (req, res) => {
+    await db.deleteNotification(parseInt(req.params.id, 10));
+    await db.audit(req.session.userId, "notification_deleted", req.params.id, req.ip);
     res.json({ ok: true });
   });
 
@@ -180,53 +179,53 @@ function apiRoutes(db, auth, bypass, notifications) {
   });
 
   // ── API Keys ───────────────────────────────────────────────────
-  router.get("/api-keys", requireSession, (req, res) => {
-    res.json(db.getApiKeys());
+  router.get("/api-keys", requireSession, async (req, res) => {
+    res.json(await db.getApiKeys());
   });
 
-  router.post("/api-keys", requireSession, (req, res) => {
+  router.post("/api-keys", requireSession, async (req, res) => {
     const { name, permissions } = req.body;
     if (!name) return res.status(400).json({ error: "Nombre requerido" });
-    const result = db.createApiKey(name, permissions || ["read"]);
-    db.audit(req.session.userId, "api_key_created", name, req.ip);
+    const result = await db.createApiKey(name, permissions || ["read"]);
+    await db.audit(req.session.userId, "api_key_created", name, req.ip);
     res.json(result);
   });
 
-  router.delete("/api-keys/:id", requireSession, (req, res) => {
-    db.deleteApiKey(parseInt(req.params.id, 10));
-    db.audit(req.session.userId, "api_key_deleted", req.params.id, req.ip);
+  router.delete("/api-keys/:id", requireSession, async (req, res) => {
+    await db.deleteApiKey(parseInt(req.params.id, 10));
+    await db.audit(req.session.userId, "api_key_deleted", req.params.id, req.ip);
     res.json({ ok: true });
   });
 
   // ── Logs ───────────────────────────────────────────────────────
-  router.get("/logs", requireSession, (req, res) => {
+  router.get("/logs", requireSession, async (req, res) => {
     const { type, limit, offset } = req.query;
-    res.json(db.getLogs({
+    res.json(await db.getLogs({
       type,
       limit: parseInt(limit || "100", 10),
       offset: parseInt(offset || "0", 10),
     }));
   });
 
-  router.get("/logs/counts", requireSession, (req, res) => {
-    res.json(db.getLogCounts());
+  router.get("/logs/counts", requireSession, async (req, res) => {
+    res.json(await db.getLogCounts());
   });
 
   // ── History (for charts) ───────────────────────────────────────
-  router.get("/history/checks", requireSession, (req, res) => {
+  router.get("/history/checks", requireSession, async (req, res) => {
     const hours = parseInt(req.query.hours || "24", 10);
-    res.json(db.getCheckHistory(hours));
+    res.json(await db.getCheckHistory(hours));
   });
 
-  router.get("/history/bypass", requireSession, (req, res) => {
+  router.get("/history/bypass", requireSession, async (req, res) => {
     const limit = parseInt(req.query.limit || "50", 10);
-    res.json(db.getBypassHistory(limit));
+    res.json(await db.getBypassHistory(limit));
   });
 
   // ── Audit log ──────────────────────────────────────────────────
-  router.get("/audit", requireSession, (req, res) => {
+  router.get("/audit", requireSession, async (req, res) => {
     const limit = parseInt(req.query.limit || "100", 10);
-    res.json(db.getAuditLog(limit));
+    res.json(await db.getAuditLog(limit));
   });
 
   // ── About / update check ───────────────────────────────────────
@@ -241,7 +240,7 @@ function apiRoutes(db, auth, bypass, notifications) {
       dbType: db.type,
     };
 
-    if (db.getSetting("update_check") === "1") {
+    if ((await db.getSetting("update_check")) === "1") {
       try {
         const resp = await fetch(
           "https://api.github.com/repos/SurMod/cffootballbypass-docker/releases/latest",

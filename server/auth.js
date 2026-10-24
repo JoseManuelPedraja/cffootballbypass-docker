@@ -12,12 +12,12 @@ class Auth {
   }
 
   async ensureAdmin() {
-    const count = this.db.getUserCount();
+    const count = await this.db.getUserCount();
     if (count === 0) {
       const envPass = process.env.ADMIN_PASSWORD;
       if (envPass) {
         const hash = await bcrypt.hash(envPass, BCRYPT_ROUNDS);
-        this.db.createUser("admin", hash);
+        await this.db.createUser("admin", hash);
         console.log("[Auth] Admin user created from ADMIN_PASSWORD env");
       } else {
         console.log("[Auth] No users — setup wizard will run on first access");
@@ -26,7 +26,7 @@ class Auth {
   }
 
   async isSetupRequired() {
-    return this.db.getUserCount() === 0;
+    return (await this.db.getUserCount()) === 0;
   }
 
   async createUser(username, password) {
@@ -35,7 +35,7 @@ class Auth {
   }
 
   async login(username, password, totpToken, ip) {
-    const user = this.db.getUserByUsername(username);
+    const user = await this.db.getUserByUsername(username);
     if (!user) {
       await bcrypt.hash("dummy", BCRYPT_ROUNDS);
       return { ok: false, error: "Credenciales incorrectas" };
@@ -43,7 +43,7 @@ class Auth {
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-      this.db.audit(user.id, "login_failed", "Bad password", ip);
+      await this.db.audit(user.id, "login_failed", "Bad password", ip);
       return { ok: false, error: "Credenciales incorrectas" };
     }
 
@@ -51,7 +51,7 @@ class Auth {
       if (!totpToken) {
         return { requireTotp: true };
       }
-      const secret = this.db.getTotpSecret(user.id);
+      const secret = await this.db.getTotpSecret(user.id);
       if (!secret) {
         return { ok: false, error: "Error 2FA: secreto no encontrado" };
       }
@@ -65,19 +65,19 @@ class Auth {
       });
       const delta = totp.validate({ token: totpToken, window: 1 });
       if (delta === null) {
-        this.db.audit(user.id, "login_failed", "Bad TOTP", ip);
+        await this.db.audit(user.id, "login_failed", "Bad TOTP", ip);
         return { ok: false, error: "Código 2FA incorrecto" };
       }
     }
 
-    this.db.audit(user.id, "login", null, ip);
+    await this.db.audit(user.id, "login", null, ip);
     return { ok: true, user: { id: user.id, username: user.username } };
   }
 
   async generate2FA(userId) {
-    const user = this.db.getUserById(userId);
+    const user = await this.db.getUserById(userId);
     const secret = new Secret({ size: 20 });
-    this.db.setTotpSecret(userId, secret.base32);
+    await this.db.setTotpSecret(userId, secret.base32);
 
     const totp = new TOTP({
       issuer: "CF Football Bypass",
@@ -91,14 +91,14 @@ class Auth {
     const uri = totp.toString();
     const qr = await QRCode.toDataURL(uri);
 
-    return { secret: secret.base32, uri, qr };
+    return { secret: secret.base32, uri, qrCode: qr };
   }
 
   async verify2FA(userId, token) {
-    const secretStr = this.db.getTotpSecret(userId);
+    const secretStr = await this.db.getTotpSecret(userId);
     if (!secretStr) return false;
 
-    const user = this.db.getUserById(userId);
+    const user = await this.db.getUserById(userId);
     const totp = new TOTP({
       issuer: "CF Football Bypass",
       label: user.username,
@@ -112,25 +112,25 @@ class Auth {
   }
 
   async enable2FA(userId) {
-    this.db.enable2FA(userId);
-    this.db.audit(userId, "2fa_enabled", null, null);
+    await this.db.enable2FA(userId);
+    await this.db.audit(userId, "2fa_enabled", null, null);
   }
 
   async disable2FA(userId) {
-    this.db.disable2FA(userId);
-    this.db.audit(userId, "2fa_disabled", null, null);
+    await this.db.disable2FA(userId);
+    await this.db.audit(userId, "2fa_disabled", null, null);
   }
 
   async verifyPassword(userId, password) {
-    const user = this.db.getUserById(userId);
+    const user = await this.db.getUserById(userId);
     if (!user) return false;
     return bcrypt.compare(password, user.password_hash);
   }
 
   async changePassword(userId, newPassword) {
     const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    this.db.updateUserPassword(userId, hash);
-    this.db.audit(userId, "password_changed", null, null);
+    await this.db.updateUserPassword(userId, hash);
+    await this.db.audit(userId, "password_changed", null, null);
   }
 
   requireAuth() {
@@ -149,15 +149,16 @@ class Auth {
         return res.status(401).json({ error: "API key requerida" });
       }
       const key = header.substring(7);
-      const apiKey = this.db.validateApiKey(key);
-      if (!apiKey) {
-        return res.status(401).json({ error: "API key inválida o expirada" });
-      }
-      if (!apiKey.permissions.includes(permission) && !apiKey.permissions.includes("admin")) {
-        return res.status(403).json({ error: "Permiso insuficiente" });
-      }
-      req.apiKey = apiKey;
-      next();
+      this.db.validateApiKey(key).then((apiKey) => {
+        if (!apiKey) {
+          return res.status(401).json({ error: "API key inválida o expirada" });
+        }
+        if (!apiKey.permissions.includes(permission) && !apiKey.permissions.includes("admin")) {
+          return res.status(403).json({ error: "Permiso insuficiente" });
+        }
+        req.apiKey = apiKey;
+        next();
+      }).catch(() => res.status(500).json({ error: "Error interno" }));
     };
   }
 }

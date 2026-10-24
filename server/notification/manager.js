@@ -9,6 +9,12 @@ const { PushoverProvider } = require("./providers/pushover");
 const { GotifyProvider } = require("./providers/gotify");
 const { NtfyProvider } = require("./providers/ntfy");
 const { TeamsProvider } = require("./providers/teams");
+const { SignalProvider } = require("./providers/signal");
+const { PagerDutyProvider } = require("./providers/pagerduty");
+const { TwilioProvider } = require("./providers/twilio");
+const { MatrixProvider } = require("./providers/matrix");
+const { GoogleChatProvider } = require("./providers/googlechat");
+const { AppriseProvider } = require("./providers/apprise");
 
 const PROVIDERS = {
   email: EmailProvider,
@@ -20,6 +26,12 @@ const PROVIDERS = {
   gotify: GotifyProvider,
   ntfy: NtfyProvider,
   teams: TeamsProvider,
+  signal: SignalProvider,
+  pagerduty: PagerDutyProvider,
+  twilio: TwilioProvider,
+  matrix: MatrixProvider,
+  googlechat: GoogleChatProvider,
+  apprise: AppriseProvider,
 };
 
 const EVENT_MAP = {
@@ -41,12 +53,12 @@ class NotificationManager {
       type,
       name: PROVIDERS[type].displayName,
       icon: PROVIDERS[type].icon,
-      fields: PROVIDERS[type].configFields,
+      configFields: PROVIDERS[type].configFields,
     }));
   }
 
   async send(event, data) {
-    const notifications = this.db.getNotifications().filter((n) => n.enabled);
+    const notifications = (await this.db.getNotifications()).filter((n) => n.enabled);
     const column = EVENT_MAP[event];
     if (!column) return;
 
@@ -67,12 +79,12 @@ class NotificationManager {
         const provider = new ProviderClass(notif.config);
         await provider.send(data);
         this.lastSent[throttleKey] = now;
-        this.db.addLog("notification", `Notificación ${notif.type} enviada: ${notif.name}`, {
+        await this.db.addLog("notification", `Notificación ${notif.type} enviada: ${notif.name}`, {
           event,
           provider: notif.type,
         });
       } catch (err) {
-        this.db.addLog("error", `Notificación ${notif.type} fallida: ${err.message}`, {
+        await this.db.addLog("error", `Notificación ${notif.type} fallida: ${err.message}`, {
           provider: notif.type,
           name: notif.name,
         });

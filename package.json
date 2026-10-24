@@ -28,6 +28,10 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.15"
   },
+  "optionalDependencies": {
+    "mysql2": "^3.11.0",
+    "pg": "^8.12.0"
+  },
   "license": "GPL-2.0-or-later",
   "repository": {
     "type": "git",
