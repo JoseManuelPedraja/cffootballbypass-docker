@@ -281,6 +281,11 @@ const App = (() => {
     }
   }
 
+  function cfCloud(on) {
+    const color = on ? "#F6821F" : "#8C8C8C";
+    return `<svg width="28" height="20" viewBox="0 0 60 40" fill="${color}"><path d="M48.6 25.6c.2-.8.1-1.5-.2-2-.3-.4-.8-.7-1.4-.7h-31c-.3 0-.5-.1-.6-.3-.1-.2-.1-.4 0-.6.2-.5.6-.9 1.1-1 .2 0 .3-.1.4-.2l.2-.4c1.2-4.2 5-7.2 9.5-7.2 3.3 0 6.2 1.6 8 4 .2.3.5.4.8.3 1.2-.4 2.5-.3 3.6.3 1.1.6 1.9 1.5 2.3 2.7.1.3.3.5.6.5 3 .3 5.3 2.5 5.7 5.4v.2c0 .3.2.5.4.6.2.1.5 0 .6-.2l-.1.1c.8-1.7 1-1.5.1-.5z"/><path d="M41.7 27h-26c-3.1 0-5.7-2.5-5.7-5.7 0-3 2.3-5.4 5.2-5.6C16.4 11.5 20 8 24.4 8c3.1 0 5.9 1.8 7.3 4.5 1-.6 2.2-.9 3.4-.9 3.5 0 6.4 2.8 6.6 6.2C45 18.6 47.5 21.5 47.5 25c0 1.1-.9 2-2 2h-3.8z" opacity=".7"/></svg>`;
+  }
+
   function renderStatus() {
     const main = document.getElementById("mainContent");
     if (!main) return;
@@ -309,6 +314,12 @@ const App = (() => {
 
     const modes = ["auto", "force_off", "force_on", "paused"];
 
+    const feedStatus = s.stats?.feedStale
+      ? `<span class="pill pill-off"><span class="pill-dot"></span>Feed obsoleto</span>`
+      : (s.stats?.blockedIps > 0
+        ? `<span class="pill pill-off"><span class="pill-dot"></span>Bloqueos detectados</span>`
+        : `<span class="pill pill-on"><span class="pill-dot"></span>Sin bloqueos</span>`);
+
     main.innerHTML = `
       <div class="page-header">
         <div>
@@ -321,9 +332,7 @@ const App = (() => {
       <div class="hero ${heroClass}">
         <div style="display:flex;align-items:center;gap:16px">
           <div class="hero-dot">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              ${active ? '<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>' : '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
-            </svg>
+            ${cfCloud(!active)}
           </div>
           <div>
             <div class="hero-kicker">${heroKicker}</div>
@@ -333,26 +342,31 @@ const App = (() => {
         <div class="hero-detail">${heroDetail}</div>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-label">${t("feed.blocked_ips")}</span>
-          <span class="stat-value">${s.blockedIps ?? 0}</span>
-          <span class="stat-detail">${t("feed.in_feed")}</span>
+      <div class="card feed-card">
+        <div class="section-header">
+          <h2 class="section-sub">hayahora.futbol</h2>
+          ${feedStatus}
         </div>
-        <div class="stat-card">
-          <span class="stat-label">${t("feed.isps_blocking")}</span>
-          <span class="stat-value">${s.blockedIsps ?? 0}</span>
-          <span class="stat-detail">${t("feed.min_prefix")} ${s.minIsps || 2}</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">${t("feed.feed_updated")}</span>
-          <span class="stat-value">${s.feedAge ? Math.round(s.feedAge) + "m" : "--"}</span>
-          <span class="stat-detail">${s.feedStale ? t("feed.stale") : t("feed.fresh")}</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">${t("feed.cooldown")}</span>
-          <span class="stat-value">${s.cooldownMinutes || 0}m</span>
-          <span class="stat-detail">${t("feed.before_reactivate")}</span>
+        <div class="stats-grid" style="margin-top:12px">
+          <div class="stat-card">
+            <span class="stat-label">${t("feed.blocked_ips")}</span>
+            <span class="stat-value ${(s.stats?.blockedIps || 0) > 0 ? "stat-warn" : ""}">${s.stats?.blockedIps ?? 0}</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">${t("feed.isps_blocking")}</span>
+            <span class="stat-value ${(s.stats?.blockedIsps || 0) > 0 ? "stat-warn" : ""}">${s.stats?.blockedIsps ?? 0}</span>
+            ${s.stats?.ispNames?.length ? `<span class="stat-detail">${s.stats.ispNames.join(", ")}</span>` : ""}
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">${t("feed.feed_updated")}</span>
+            <span class="stat-value">${s.stats?.feedAge ? Math.round(s.stats.feedAge) + "m" : "--"}</span>
+            <span class="stat-detail">${s.stats?.feedStale ? t("feed.stale") : t("feed.fresh")}</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">${t("feed.cooldown")}</span>
+            <span class="stat-value">${s.cooldownMinutes || 0}m</span>
+            <span class="stat-detail">${t("feed.before_reactivate")}</span>
+          </div>
         </div>
       </div>
 
@@ -368,7 +382,7 @@ const App = (() => {
         </div>
       </div>
 
-      ${renderDnsTable(s.domains || [])}
+      ${renderDnsTable(s.domainResults || s.domains || [])}
       ${renderRecentActivity(s.recentLogs || [])}
     `;
   }
@@ -395,9 +409,9 @@ const App = (() => {
             <tbody>
               ${domains.map((d) => `
                 <tr>
-                  <td class="mono">${esc(d.record || d.domain)}</td>
+                  <td class="mono">${esc(d.fullname || d.record || d.domain)}</td>
                   <td>${esc(d.type || "A")}</td>
-                  <td><span class="pill ${d.proxied ? "pill-on" : "pill-off"}"><span class="pill-dot"></span>${d.proxied ? t("dns.on") : t("dns.off")}</span></td>
+                  <td><span class="cf-proxy-icon" title="${d.proxy !== false ? "Proxy ON" : "Proxy OFF"}">${cfCloud(d.proxy !== false)}</span> <span class="pill ${d.proxy !== false ? "pill-on" : "pill-off"}"><span class="pill-dot"></span>${d.proxy !== false ? t("dns.on") : t("dns.off")}</span></td>
                   <td><span class="pill ${d.blocked ? "pill-off" : "pill-on"}"><span class="pill-dot"></span>${d.blocked ? t("dns.blocked") : t("dns.clear")}</span></td>
                   <td><span class="tag tag-bypass">${esc(d.reason || "--")}</span></td>
                 </tr>
@@ -810,12 +824,16 @@ const App = (() => {
         <h1>${t("about.title")}</h1>
       </div>
 
+      <div class="about-hero card">
+        <div style="text-align:center;padding:24px 0">
+          <img src="/img/logo.png" alt="CF Football Bypass" style="width:80px;height:80px;margin-bottom:12px">
+          <h2 style="margin:0;font-size:22px;font-weight:700">CF Football Bypass</h2>
+          <p style="margin:4px 0 0;color:var(--text-muted)">Panel v${esc(info.version)}</p>
+        </div>
+      </div>
+
       <div class="card">
         <div class="stats-grid">
-          <div class="stat-card">
-            <span class="stat-label">${t("about.version")}</span>
-            <span class="stat-value" style="font-size:20px">${esc(info.version)}</span>
-          </div>
           <div class="stat-card">
             <span class="stat-label">${t("about.node")}</span>
             <span class="stat-value" style="font-size:20px">${esc(info.nodeVersion)}</span>
@@ -839,26 +857,22 @@ const App = (() => {
         </div>
       </div>
 
-      ${info.updateAvailable ? `
-        <div class="hero amber">
-          <div>
-            <div class="hero-kicker">${t("about.update_available", { version: info.latestVersion })}</div>
-            <a href="${esc(info.releaseUrl)}" target="_blank" rel="noopener">${t("about.github")}</a>
-          </div>
-        </div>
-      ` : `
-        <div class="hero green">
-          <div class="hero-kicker">${t("about.up_to_date")}</div>
-        </div>
-      `}
-
       <div class="card">
         <h2 class="section-sub">${t("about.credits")}</h2>
-        <ul style="margin:8px 0 0;padding-left:20px;color:var(--text-secondary)">
-          <li>${t("about.credits_feed")}</li>
-          <li>${t("about.credits_original")}</li>
-          <li>${t("about.credits_community")}</li>
-        </ul>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent-fg);flex-shrink:0">JM</div>
+            <div>
+              <strong>Jose Manuel Pedraja</strong>
+              <div><a href="https://github.com/JoseManuelPedraja/cffootballbypass-docker" target="_blank" rel="noopener">github.com/JoseManuelPedraja/cffootballbypass-docker</a></div>
+            </div>
+          </div>
+          <div style="color:var(--text-secondary);font-size:14px;padding-left:52px">
+            <p style="margin:0 0 4px">${t("about.credits_feed")}</p>
+            <p style="margin:0 0 4px">${t("about.credits_original")}</p>
+            <p style="margin:0">${t("about.credits_community")}</p>
+          </div>
+        </div>
       </div>
 
       <div class="card">
