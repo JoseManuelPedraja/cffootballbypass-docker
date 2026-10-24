@@ -2,10 +2,10 @@
 
 # ⚽ CF Football Bypass
 
-[![GHCR](https://img.shields.io/badge/ghcr.io-%23181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/SurMod/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
+[![GHCR](https://img.shields.io/badge/ghcr.io-%23181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/JoseManuelPedraja/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
 [![PHP](https://img.shields.io/badge/php-%23777BB4.svg?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-GNU-blue.svg?style=for-the-badge)](LICENSE)
-[![Security Scan](https://img.shields.io/badge/security-scanned-success?style=for-the-badge)](https://github.com/SurMod/cffootballbypass-docker/security)
+[![Security Scan](https://img.shields.io/badge/security-scanned-success?style=for-the-badge)](https://github.com/JoseManuelPedraja/cffootballbypass-docker/security)
 
 **Automatically bypass Spanish football broadcast blocks by intelligently toggling Cloudflare proxy** ⚡
 
@@ -90,7 +90,7 @@ Alpine-based image (~50MB)
 - **Email notifications**: SMTP-based alerts when bypass activates/deactivates (2-minute throttle)
 - **File logging**: JSON-formatted log file with configurable retention and automatic pruning
 - **Improved domain parsing**: supports both `name` and `domain` keys in DOMAINS JSON
-- **GitHub Container Registry**: image published to `ghcr.io/surmod/cffootballbypass-docker`
+- **GitHub Container Registry**: image published to `ghcr.io/josemanuelpedraja/cffootballbypass-docker`
 - **Updated user agent**: `CFB-Docker/2.1`
 
 ---
@@ -122,7 +122,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: ghcr.io/surmod/cffootballbypass-docker:latest
+    image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -151,7 +151,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: ghcr.io/surmod/cffootballbypass-docker:latest
+    image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -181,7 +181,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: ghcr.io/surmod/cffootballbypass-docker:latest
+    image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -249,7 +249,7 @@ version: "3.9"
 
 services:
   cf-bypass:
-    image: ghcr.io/surmod/cffootballbypass-docker:latest
+    image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
     container_name: cf-football-bypass
     restart: always
     environment:
@@ -718,7 +718,7 @@ docker exec cf-football-bypass cat /app/data/state.json | jq .
 
 Contributions are welcome! You can help by:
 
-- 🐛 Reporting bugs via [Issues](https://github.com/SurMod/cffootballbypass-docker/issues)
+- 🐛 Reporting bugs via [Issues](https://github.com/JoseManuelPedraja/cffootballbypass-docker/issues)
 - 💡 Suggesting features or improvements
 - 🔧 Submitting Pull Requests
 - ⭐ Starring the repo if you find it useful
@@ -745,8 +745,8 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE. See [LICENSE](LIC
 
 **Made with ⚽ and ☕ in Spain**
 
-[![GitHub](https://img.shields.io/badge/GitHub-SurMod-181717?style=flat-square&logo=github)](https://github.com/SurMod/cffootballbypass-docker)
-[![GHCR](https://img.shields.io/badge/GHCR-SurMod-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/SurMod/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
+[![GitHub](https://img.shields.io/badge/GitHub-JoseManuelPedraja-181717?style=flat-square&logo=github)](https://github.com/JoseManuelPedraja/cffootballbypass-docker)
+[![GHCR](https://img.shields.io/badge/GHCR-JoseManuelPedraja-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/JoseManuelPedraja/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
 
 [⬆ Back to top](#-cf-football-bypass)
 

@@ -8,7 +8,7 @@
  * Auth types: global (X-Auth-Key + X-Auth-Email), token (Bearer), account_token (Bearer)
  *
  * @author    Jose Manuel Pedraja
- * @copyright 2025-2026 SurMod
+ * @copyright 2025-2026 Jose Manuel Pedraja
  * @license   GPL-2.0-or-later
  */
 

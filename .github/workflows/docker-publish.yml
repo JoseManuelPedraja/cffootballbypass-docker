@@ -12,7 +12,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: surmod/cffootballbypass-docker
+  IMAGE_NAME: josemanuelpedraja/cffootballbypass-docker
 
 jobs:
   build-and-push:
