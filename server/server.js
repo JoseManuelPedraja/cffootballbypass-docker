@@ -249,6 +249,7 @@ async function main() {
 
   // ── Static files ──────────────────────────────────────────────
   app.use(express.static(path.join(__dirname, "..", "public")));
+  app.use("/locales", express.static(path.join(__dirname, "..", "locales")));
 
   // SPA fallback
   app.get("*", (req, res) => {
