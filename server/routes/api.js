@@ -115,7 +115,7 @@ function apiRoutes(db, auth, bypass, notifications) {
   // ── Bypass control ─────────────────────────────────────────────
   router.post("/bypass/mode", requireSession, async (req, res) => {
     const { mode } = req.body;
-    bypass.setMode(mode);
+    await bypass.setMode(mode);
     await db.audit(req.session.userId, "mode_changed", mode, req.ip);
     res.json({ ok: true });
   });

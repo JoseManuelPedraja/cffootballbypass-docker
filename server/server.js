@@ -306,7 +306,7 @@ async function main() {
   server.listen(PORT, HOST, () => {
     console.log(`[Server] http://${HOST}:${PORT}`);
     console.log(`[Server] Prometheus metrics: /metrics`);
-    bypass.start();
+    bypass.start().catch(err => console.error("[Bypass] Start error:", err));
   });
 
   // ── Graceful shutdown ─────────────────────────────────────────

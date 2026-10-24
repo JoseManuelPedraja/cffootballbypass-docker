@@ -28,8 +28,8 @@ class BypassEngine extends EventEmitter {
     this.domainResults = [];
   }
 
-  start() {
-    const creds = this.db.getCfCredentials();
+  async start() {
+    const creds = await this.db.getCfCredentials();
     if (creds && creds.api_token && creds.zone_id) {
       this.cf = new CloudflareClient(creds);
       console.log("[Bypass] Engine started with", creds.auth_type, "auth");
@@ -37,11 +37,11 @@ class BypassEngine extends EventEmitter {
       console.log("[Bypass] No Cloudflare credentials — configure via panel");
     }
 
-    const interval = parseInt(this.db.getSetting("interval_seconds") || "300", 10);
+    const interval = parseInt((await this.db.getSetting("interval_seconds")) || "300", 10);
+    console.log(`[Bypass] Check interval: ${interval}s`);
+    this.running = true;
     this.runCheck();
     this.timer = setInterval(() => this.runCheck(), interval * 1000);
-    this.running = true;
-    console.log(`[Bypass] Check interval: ${interval}s`);
   }
 
   stop() {
@@ -67,10 +67,10 @@ class BypassEngine extends EventEmitter {
     };
   }
 
-  setMode(mode) {
+  async setMode(mode) {
     if (!["auto", "force_off", "force_on", "paused"].includes(mode)) return;
     this.mode = mode;
-    this.db.addLog("panel", `Modo cambiado a: ${mode}`);
+    await this.db.addLog("panel", `Modo cambiado a: ${mode}`);
     this.emit("statusChange", this.getStatus());
     if (mode !== "paused") this.runCheck();
   }
@@ -78,28 +78,27 @@ class BypassEngine extends EventEmitter {
   async runCheck() {
     if (this.mode === "paused") return;
 
-    const feedUrl = this.db.getSetting("feed_url") || "https://hayahora.futbol/estado/data.json";
-    const staleHours = parseInt(this.db.getSetting("stale_threshold_hours") || "6", 10);
-    const minIsps = parseInt(this.db.getSetting("min_isps_blocked") || "2", 10);
-    const forceOverride = this.db.getSetting("force_proxy_off_override") === "1";
-    const cooldownMin = parseInt(this.db.getSetting("cooldown_minutes") || "60", 10);
-    const domains = this.db.getDomains().filter((d) => d.enabled);
+    const feedUrl = (await this.db.getSetting("feed_url")) || "https://hayahora.futbol/estado/data.json";
+    const staleHours = parseInt((await this.db.getSetting("stale_threshold_hours")) || "6", 10);
+    const minIsps = parseInt((await this.db.getSetting("min_isps_blocked")) || "2", 10);
+    const forceOverride = (await this.db.getSetting("force_proxy_off_override")) === "1";
+    const cooldownMin = parseInt((await this.db.getSetting("cooldown_minutes")) || "60", 10);
+    const domains = (await this.db.getDomains()).filter((d) => d.enabled);
 
-    // Refresh CF client
-    const creds = this.db.getCfCredentials();
+    const creds = await this.db.getCfCredentials();
     if (creds && creds.api_token && creds.zone_id) {
       this.cf = new CloudflareClient(creds);
     }
 
     if (!this.cf) {
-      this.db.addLog("error", "Sin credenciales de Cloudflare");
+      await this.db.addLog("error", "Sin credenciales de Cloudflare");
       this.lastCheck = new Date().toISOString();
       this.emit("statusChange", this.getStatus());
       return;
     }
 
     if (domains.length === 0) {
-      this.db.addLog("error", "No hay dominios configurados");
+      await this.db.addLog("error", "No hay dominios configurados");
       this.lastCheck = new Date().toISOString();
       this.emit("statusChange", this.getStatus());
       return;
@@ -118,9 +117,9 @@ class BypassEngine extends EventEmitter {
         this.lastFeed = new Date().toISOString();
       } else if (this.feedCache) {
         feedData = this.feedCache;
-        this.db.addLog("warn", `Feed HTTP ${resp.status}, usando caché`);
+        await this.db.addLog("warn", `Feed HTTP ${resp.status}, usando caché`);
       } else {
-        this.db.addLog("error", `Feed no disponible (HTTP ${resp.status})`);
+        await this.db.addLog("error", `Feed no disponible (HTTP ${resp.status})`);
         this.lastCheck = new Date().toISOString();
         this.emit("statusChange", this.getStatus());
         return;
@@ -128,9 +127,9 @@ class BypassEngine extends EventEmitter {
     } catch (err) {
       if (this.feedCache) {
         feedData = this.feedCache;
-        this.db.addLog("warn", "Feed timeout, usando caché");
+        await this.db.addLog("warn", "Feed timeout, usando caché");
       } else {
-        this.db.addLog("error", `Feed error: ${err.message}`);
+        await this.db.addLog("error", `Feed error: ${err.message}`);
         this.lastCheck = new Date().toISOString();
         this.emit("statusChange", this.getStatus());
         this.notifications.send("error", {
@@ -257,7 +256,7 @@ class BypassEngine extends EventEmitter {
         apiStatus = "ok";
       } catch (err) {
         apiStatus = `error: ${err.message}`;
-        this.db.addLog("error", `API error for ${fullname}: ${err.message}`);
+        await this.db.addLog("error", `API error for ${fullname}: ${err.message}`);
       }
 
       results.push({
@@ -284,8 +283,8 @@ class BypassEngine extends EventEmitter {
       const eventType = newActive ? "bypass_activate" : "bypass_deactivate";
       const domainNames = results.map((r) => r.fullname);
 
-      this.db.addBypassHistory(newActive, results[0]?.reason, domainNames, blockedIps, blockedIsps);
-      this.db.addLog("bypass", newActive ? "Bypass activado" : "Bypass desactivado", {
+      await this.db.addBypassHistory(newActive, results[0]?.reason, domainNames, blockedIps, blockedIsps);
+      await this.db.addLog("bypass", newActive ? "Bypass activado" : "Bypass desactivado", {
         reason: results[0]?.reason,
         domains: domainNames,
       });
@@ -304,7 +303,7 @@ class BypassEngine extends EventEmitter {
       });
     }
 
-    this.db.addCheckHistory({
+    await this.db.addCheckHistory({
       blocked_ips: blockedIps,
       blocked_isps: blockedIsps,
       general_blocked: generalBlocked,
