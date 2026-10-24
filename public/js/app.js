@@ -67,7 +67,23 @@ const App = (() => {
     const icon = cur === "dark"
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-    btn.innerHTML = icon + (cur === "dark" ? t("status.bypass_inactive").split(" ")[0] || "Light" : t("status.bypass_active").split(" ")[0] || "Dark");
+    btn.innerHTML = icon + (cur === "dark" ? "Día" : "Noche");
+  }
+
+  function navIcon(name) {
+    const icons = {
+      status: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+      domains: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+      notifications: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+      logs: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+      security: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+      about: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    };
+    return icons[name] || '';
+  }
+
+  function adminAvatar() {
+    return '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>';
   }
 
   // ── API ───────────────────────────────────────────────────────
@@ -142,32 +158,60 @@ const App = (() => {
 
   // ── Shell ─────────────────────────────────────────────────────
   function renderShell() {
+    const bypassOn = status?.bypassActive;
+    const statusDot = bypassOn
+      ? '<span class="sidebar-status-dot off" title="Bypass activo"></span>'
+      : '<span class="sidebar-status-dot on" title="Funcionando"></span>';
     return `
       <div class="app">
-        <nav class="sidebar">
-          <div class="sidebar-logo">
-            <img src="/img/logo.png" alt="CFB" style="width:32px;height:32px">
-            <div>
-              <div class="name">${t("app.name")}</div>
-              <div class="version">${t("app.version")}</div>
+        <nav class="sidebar" id="sidebar">
+          <div class="sidebar-header">
+            <img src="/img/logo.png" alt="CFB" class="sidebar-logo-img">
+            <div class="sidebar-brand">
+              <div class="sidebar-brand-name">CF Football Bypass</div>
+              <div class="sidebar-brand-ver">${t("app.version")} ${statusDot}</div>
             </div>
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="App.toggleSidebar()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
           </div>
-          <button class="nav-btn" data-view="status" onclick="App.navigate('status')">${t("nav.status")}</button>
-          <button class="nav-btn" data-view="domains" onclick="App.navigate('domains')">${t("nav.domains")}</button>
-          <button class="nav-btn" data-view="notifications" onclick="App.navigate('notifications')">${t("nav.notifications")}</button>
-          <button class="nav-btn" data-view="logs" onclick="App.navigate('logs')">${t("nav.logs")}</button>
-          <button class="nav-btn" data-view="security" onclick="App.navigate('security')">${t("nav.security")}</button>
-          <button class="nav-btn" data-view="about" onclick="App.navigate('about')">${t("nav.about")}</button>
-          <div class="sidebar-spacer"></div>
-          <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()"></button>
-          <div class="sidebar-user">
-            <strong>${esc(user?.username || "admin")}</strong>
-            <span>${t("nav.session")}</span>
-            <a href="#" onclick="App.logout(); return false">${t("nav.logout")}</a>
+          <div class="sidebar-nav" id="sidebarNav">
+            <button class="nav-btn" data-view="status" onclick="App.navigate('status')">
+              ${navIcon("status")}<span>${t("nav.status")}</span>
+            </button>
+            <button class="nav-btn" data-view="domains" onclick="App.navigate('domains')">
+              ${navIcon("domains")}<span>${t("nav.domains")}</span>
+            </button>
+            <button class="nav-btn" data-view="notifications" onclick="App.navigate('notifications')">
+              ${navIcon("notifications")}<span>${t("nav.notifications")}</span>
+            </button>
+            <button class="nav-btn" data-view="logs" onclick="App.navigate('logs')">
+              ${navIcon("logs")}<span>${t("nav.logs")}</span>
+            </button>
+            <button class="nav-btn" data-view="security" onclick="App.navigate('security')">
+              ${navIcon("security")}<span>${t("nav.security")}</span>
+            </button>
+            <button class="nav-btn" data-view="about" onclick="App.navigate('about')">
+              ${navIcon("about")}<span>${t("nav.about")}</span>
+            </button>
+            <div class="sidebar-spacer"></div>
+            <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()"></button>
+            <div class="sidebar-user">
+              <div class="sidebar-avatar">${adminAvatar()}</div>
+              <div class="sidebar-user-info">
+                <strong>${esc(user?.username || "admin")}</strong>
+                <a href="#" onclick="App.logout(); return false">${t("nav.logout")}</a>
+              </div>
+            </div>
           </div>
         </nav>
         <main class="main" id="mainContent"></main>
       </div>`;
+  }
+
+  function toggleSidebar() {
+    const nav = document.getElementById("sidebarNav");
+    if (nav) nav.classList.toggle("open");
   }
 
   // ── Login ─────────────────────────────────────────────────────
@@ -175,12 +219,10 @@ const App = (() => {
     container.innerHTML = `
       <div class="login-wrap">
         <form class="login-form" id="loginForm">
-          <div class="login-logo">
-            <img src="/img/logo.png" alt="CFB" style="width:48px;height:48px">
-            <div>
-              <h1>${t("app.name")}</h1>
-              <div class="sub">${t("auth.subtitle")}</div>
-            </div>
+          <div class="login-header">
+            <img src="/img/logo.png" alt="CF Football Bypass" class="login-logo-img">
+            <h1>CF Football Bypass</h1>
+            <p>${t("auth.subtitle")}</p>
           </div>
           <div id="loginError" class="alert-error" hidden></div>
           <div class="form-group">
@@ -195,7 +237,8 @@ const App = (() => {
             <label class="label">${t("auth.totp_label")}</label>
             <input class="input" name="totp" placeholder="${t("auth.totp_placeholder")}" autocomplete="one-time-code" inputmode="numeric" maxlength="6">
           </div>
-          <button class="btn" type="submit">${t("auth.login")}</button>
+          <button class="btn btn-login" type="submit">${t("auth.login")}</button>
+          <p class="login-footer">v3.0.0 &middot; Jose Manuel Pedraja</p>
         </form>
       </div>`;
     document.getElementById("loginForm").onsubmit = async (e) => {
@@ -229,12 +272,10 @@ const App = (() => {
     container.innerHTML = `
       <div class="login-wrap">
         <form class="login-form" id="setupForm">
-          <div class="login-logo">
-            <img src="/img/logo.png" alt="CFB" style="width:48px;height:48px">
-            <div>
-              <h1>${t("auth.setup_title")}</h1>
-              <div class="sub">${t("auth.setup_subtitle")}</div>
-            </div>
+          <div class="login-header">
+            <img src="/img/logo.png" alt="CF Football Bypass" class="login-logo-img">
+            <h1>${t("auth.setup_title")}</h1>
+            <p>${t("auth.setup_subtitle")}</p>
           </div>
           <div id="setupError" class="alert-error" hidden></div>
           <div class="form-group">
@@ -1191,7 +1232,7 @@ const App = (() => {
 
   // ── Public API ────────────────────────────────────────────────
   return {
-    init, navigate, toggleTheme, logout,
+    init, navigate, toggleTheme, toggleSidebar, logout,
     forceCheck, setMode,
     addDomainRow, saveDomainSettings, testCf,
     filterLogs,
