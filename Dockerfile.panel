@@ -8,7 +8,7 @@ RUN apk add --no-cache tini
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY server/ ./server/
