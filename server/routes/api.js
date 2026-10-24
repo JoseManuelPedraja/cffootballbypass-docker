@@ -243,7 +243,7 @@ function apiRoutes(db, auth, bypass, notifications) {
     if ((await db.getSetting("update_check")) === "1") {
       try {
         const resp = await fetch(
-          "https://api.github.com/repos/SurMod/cffootballbypass-docker/releases/latest",
+          "https://api.github.com/repos/JoseManuelPedraja/cffootballbypass-docker/releases/latest",
           {
             headers: { "User-Agent": "CFB-Panel/3.0" },
             signal: AbortSignal.timeout(5000),

@@ -14,7 +14,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: surmod/cffootballbypass-panel
+  IMAGE_NAME: josemanuelpedraja/cffootballbypass-panel
 
 jobs:
   build-and-push:

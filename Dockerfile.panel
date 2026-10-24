@@ -1,6 +1,6 @@
 FROM node:20-alpine
 
-LABEL org.opencontainers.image.source="https://github.com/SurMod/cffootballbypass-docker"
+LABEL org.opencontainers.image.source="https://github.com/JoseManuelPedraja/cffootballbypass-docker"
 LABEL org.opencontainers.image.title="CF Football Bypass Panel"
 LABEL org.opencontainers.image.description="Monitoring dashboard for CF Football Bypass"
 

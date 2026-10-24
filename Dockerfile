@@ -3,7 +3,7 @@ FROM php:8.4-cli-alpine3.22
 LABEL maintainer="SurMod"
 LABEL description="CF Football Bypass - Automatic Cloudflare proxy management for La Liga blocks"
 LABEL version="2.1.0"
-LABEL org.opencontainers.image.source="https://github.com/SurMod/cffootballbypass-docker"
+LABEL org.opencontainers.image.source="https://github.com/JoseManuelPedraja/cffootballbypass-docker"
 
 RUN apk add --no-cache \
     curl \

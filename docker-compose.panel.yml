@@ -22,7 +22,7 @@ services:
 
   # Optional: the original bypass container managed by the panel
   # bypass:
-  #   image: ghcr.io/surmod/cffootballbypass-docker:latest
+  #   image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
   #   container_name: cfb-bypass
   #   restart: unless-stopped
   #   environment:
