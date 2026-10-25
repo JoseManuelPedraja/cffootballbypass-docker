@@ -5,7 +5,12 @@ LABEL org.opencontainers.image.title="CF Football Bypass Panel"
 LABEL org.opencontainers.image.description="Monitoring dashboard & autonomous Cloudflare proxy manager"
 LABEL org.opencontainers.image.version="3.0.0"
 
-RUN apk add --no-cache tini
+ARG TARGETARCH
+RUN apk add --no-cache tini \
+    && ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") \
+    && wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}" \
+       -O /usr/local/bin/cloudflared \
+    && chmod +x /usr/local/bin/cloudflared
 
 WORKDIR /app
 

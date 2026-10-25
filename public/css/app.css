@@ -175,18 +175,7 @@ img { max-width: 100%; }
 .sidebar-logo-img { width: 48px; height: auto; flex-shrink: 0; }
 .sidebar-brand { min-width: 0; }
 .sidebar-brand-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar-brand-ver { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
 .sidebar-toggle { display: none; margin-left: auto; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; }
-
-.sidebar-status-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.sidebar-status-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.sidebar-status-dot.off { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
 
 .sidebar-nav {
   display: flex;
@@ -465,6 +454,8 @@ img { max-width: 100%; }
 .tag-notification { background: var(--blue-bg); color: var(--blue); }
 .tag-panel { background: var(--pill-on-bg); color: var(--green); }
 .tag-error { background: var(--red-bg); color: var(--red); }
+.tag-ok { background: var(--pill-on-bg); color: var(--green); }
+.tag-muted { background: var(--bg-hover); color: var(--text-muted); }
 
 /* ── Filter chips ───────────────────────────────────────────── */
 .filter-group { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -636,6 +627,13 @@ img { max-width: 100%; }
   border-radius: var(--radius-sm);
   background: var(--green-bg);
   color: var(--green);
+  font-size: 13px;
+}
+.alert-warn {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--amber-bg);
+  color: var(--amber);
   font-size: 13px;
 }
 

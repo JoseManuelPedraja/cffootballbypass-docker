@@ -4,7 +4,7 @@ const express = require("express");
 const { NotificationManager } = require("../notification/manager");
 const { CloudflareClient } = require("../cloudflare");
 
-function apiRoutes(db, auth, bypass, notifications) {
+function apiRoutes(db, auth, bypass, notifications, cloudflared) {
   const router = express.Router();
 
   const requireSession = auth.requireAuth();
@@ -175,6 +175,29 @@ function apiRoutes(db, auth, bypass, notifications) {
     }
     await db.audit(req.session.userId, "domains_imported", `${imported.length} registros importados`, req.ip);
     res.json({ ok: true, imported: imported.length, skipped: records.length - imported.length });
+  });
+
+  // ── Cloudflared tunnel ─────────────────────────────────────────
+  router.get("/cloudflared/status", requireSession, (req, res) => {
+    res.json(cloudflared.getStatus());
+  });
+
+  router.post("/cloudflared/start", requireSession, async (req, res) => {
+    const { token } = req.body;
+    if (token) {
+      await db.setSetting("cloudflared_token", token);
+    }
+    await db.setSetting("cloudflared_enabled", "1");
+    await cloudflared.restart();
+    await db.audit(req.session.userId, "cloudflared_start", null, req.ip);
+    res.json({ ok: true, status: cloudflared.getStatus() });
+  });
+
+  router.post("/cloudflared/stop", requireSession, async (req, res) => {
+    await db.setSetting("cloudflared_enabled", "0");
+    cloudflared.stop();
+    await db.audit(req.session.userId, "cloudflared_stop", null, req.ip);
+    res.json({ ok: true });
   });
 
   // ── Bypass control ─────────────────────────────────────────────
