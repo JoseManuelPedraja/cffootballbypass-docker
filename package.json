@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "^11.10.0",
     "connect-session-knex": "^5.0.0",
     "cookie-parser": "^1.4.6",
     "csurf": "^1.11.0",
