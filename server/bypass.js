@@ -94,14 +94,16 @@ class BypassEngine extends EventEmitter {
     }
 
     if (!this.cf) {
-      await this.db.addLog("error", "Sin credenciales de Cloudflare");
+      this.domainResults = [];
+      this.bypassActive = false;
       this.lastCheck = new Date().toISOString();
       this.emit("statusChange", this.getStatus());
       return;
     }
 
     if (domains.length === 0) {
-      await this.db.addLog("error", "No hay dominios configurados");
+      this.domainResults = [];
+      this.bypassActive = false;
       this.lastCheck = new Date().toISOString();
       this.emit("statusChange", this.getStatus());
       return;
