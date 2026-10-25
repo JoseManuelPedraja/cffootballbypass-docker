@@ -194,14 +194,6 @@ services:
       - CFB_TRUST_PROXY=true
       - CFB_SESSION_SECRET=cambia-esto-por-algo-seguro
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: cfb-tunnel
-    restart: unless-stopped
-    command: tunnel run
-    environment:
-      - TUNNEL_TOKEN=tu-token-de-tunnel
-
 volumes:
   cfb-data:
 ```
