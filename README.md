@@ -1,5 +1,3 @@
-<img width="1919" height="908" alt="imagen" src="https://github.com/user-attachments/assets/44773dd4-508e-4a26-9793-e278bab93446" /><div align="center">
-
 # CF Football Bypass
 
 [![GHCR](https://img.shields.io/badge/ghcr.io-%23181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/JoseManuelPedraja/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
@@ -7,7 +5,7 @@
 [![Licencia](https://img.shields.io/badge/license-GPL--2.0-blue.svg?style=for-the-badge)](LICENSE)
 
 **Evita automáticamente los bloqueos por IP durante las retransmisiones de fútbol en España, alternando el estado del proxy de Cloudflare en tus dominios.**
-<img width="1919" height="908" alt="imagen" src="https://github.com/user-attachments/assets/6dbb1f9f-f29b-4601-8224-781c06ec64e6" />
+<img width="1919" height="908" alt="imagen" src="https://github.com/user-attachments/assets/44773dd4-508e-4a26-9793-e278bab93446" /><div align="center">
 
 [Inicio rápido](#-inicio-rápido) &bull; [Panel v3.0](#-panel-v30) &bull; [Configuración](#%EF%B8%8F-configuración) &bull; [Seguridad](#%EF%B8%8F-seguridad) &bull; [Preguntas frecuentes](#-preguntas-frecuentes)
 
