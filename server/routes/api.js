@@ -317,9 +317,11 @@ function apiRoutes(db, auth, bypass, notifications, cloudflared) {
   });
 
   // ── About / update check ───────────────────────────────────────
+  const pkgVersion = require("../../package.json").version;
+
   router.get("/about", requireSession, async (req, res) => {
     const info = {
-      version: "3.0.0-dev",
+      version: pkgVersion,
       nodeVersion: process.version,
       platform: process.platform,
       arch: process.arch,
@@ -328,7 +330,8 @@ function apiRoutes(db, auth, bypass, notifications, cloudflared) {
       dbType: db.type,
     };
 
-    if ((await db.getSetting("update_check")) === "1") {
+    const updateCheck = await db.getSetting("update_check");
+    if (updateCheck !== "0") {
       try {
         const resp = await fetch(
           "https://api.github.com/repos/JoseManuelPedraja/cffootballbypass-docker/releases/latest",

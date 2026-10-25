@@ -418,3 +418,4 @@ CFB_DATA_DIR=./data node server/server.js
 ## 📄 Licencia
 
 [GPL-2.0](LICENSE) — Jose Manuel Pedraja
+
