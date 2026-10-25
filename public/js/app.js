@@ -6,6 +6,7 @@
 
 const App = (() => {
   let lang = {};
+  let _langCode = "es";
   let currentView = null;
   let socket = null;
   let status = {};
@@ -33,12 +34,23 @@ const App = (() => {
       const res = await fetch(`/locales/${code}.json`);
       if (!res.ok) throw new Error();
       lang = await res.json();
+      _langCode = code;
     } catch {
       if (code !== "en") {
         const res = await fetch("/locales/en.json");
         lang = await res.json();
+        _langCode = "en";
       }
     }
+  }
+
+  function getCurrentLang() { return _langCode; }
+
+  async function changeLang(code) {
+    await loadLang(code);
+    try { localStorage.setItem("cfb_lang", code); } catch {}
+    if (user) navigate(currentView || "status");
+    else navigate("login");
   }
 
   // ── Theme ─────────────────────────────────────────────────────
@@ -196,7 +208,13 @@ const App = (() => {
               ${navIcon("about")}<span>${t("nav.about")}</span>
             </button>
             <div class="sidebar-spacer"></div>
-            <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()"></button>
+            <div class="sidebar-controls">
+              <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()"></button>
+              <select class="select select-sm sidebar-lang" onchange="App.changeLang(this.value)">
+                <option value="es" ${getCurrentLang() === "es" ? "selected" : ""}>ES</option>
+                <option value="en" ${getCurrentLang() === "en" ? "selected" : ""}>EN</option>
+              </select>
+            </div>
             <div class="sidebar-user">
               <div class="sidebar-avatar">${adminAvatar()}</div>
               <div class="sidebar-user-info">
@@ -239,7 +257,12 @@ const App = (() => {
             <input class="input" name="totp" placeholder="${t("auth.totp_placeholder")}" autocomplete="one-time-code" inputmode="numeric" maxlength="6">
           </div>
           <button class="btn btn-login" type="submit">${t("auth.login")}</button>
-          <p class="login-footer">v3.0.0 &middot; Jose Manuel Pedraja</p>
+          <div class="login-lang">
+            <select class="select select-sm" onchange="App.changeLang(this.value)">
+              <option value="es" ${getCurrentLang() === "es" ? "selected" : ""}>Español</option>
+              <option value="en" ${getCurrentLang() === "en" ? "selected" : ""}>English</option>
+            </select>
+          </div>
         </form>
       </div>`;
     document.getElementById("loginForm").onsubmit = async (e) => {
@@ -1448,7 +1471,9 @@ const App = (() => {
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     setTheme(getTheme());
-    const savedLang = (navigator.language || "en").startsWith("es") ? "es" : "en";
+    let savedLang;
+    try { savedLang = localStorage.getItem("cfb_lang"); } catch {}
+    if (!savedLang) savedLang = (navigator.language || "en").startsWith("es") ? "es" : "en";
     await loadLang(savedLang);
 
     try {
@@ -1469,7 +1494,7 @@ const App = (() => {
 
   // ── Public API ────────────────────────────────────────────────
   return {
-    init, navigate, toggleTheme, toggleSidebar, logout,
+    init, navigate, toggleTheme, toggleSidebar, changeLang, logout,
     forceCheck, setMode,
     addDomainRow, removeDomainRow, saveDomainSettings,
     showAddCfCredential, saveCfCredential, editCfCredential, deleteCfCredential, testCfForm,
