@@ -29,6 +29,7 @@ class BypassEngine extends EventEmitter {
   }
 
   async start() {
+    this.cf = null;
     const creds = await this.db.getCfCredentials();
     if (creds && creds.api_token && creds.zone_id) {
       this.cf = new CloudflareClient(creds);
@@ -88,6 +89,8 @@ class BypassEngine extends EventEmitter {
     const creds = await this.db.getCfCredentials();
     if (creds && creds.api_token && creds.zone_id) {
       this.cf = new CloudflareClient(creds);
+    } else {
+      this.cf = null;
     }
 
     if (!this.cf) {
