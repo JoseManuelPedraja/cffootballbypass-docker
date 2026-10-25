@@ -118,7 +118,7 @@
     "record": "Registro",
     "type": "Tipo",
     "remove": "Quitar registro",
-    "add": "+ Añadir registro",
+    "add": "Añadir",
     "behavior": "Comportamiento",
     "interval": "Intervalo de comprobación",
     "min_isps": "Mínimo de ISPs bloqueando",
@@ -138,7 +138,8 @@
     "email": "Email (para Global Key)",
     "account_id": "Account ID (para Account Token)",
     "test_connection": "Probar conexión",
-    "connection_ok": "Conexión correcta: zona {zone}"
+    "connection_ok": "Conexión correcta: zona {zone}",
+    "add_credential": "Añadir"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -247,7 +248,10 @@
     "credits_original": "David Carrero / Color Vivo por el plugin original de WordPress",
     "credits_community": "La comunidad Docker y Cloudflare",
     "translate": "Traducir",
-    "translate_desc": "¿Quieres CF Football Bypass en tu idioma? Puedes contribuir traducciones en GitHub."
+    "translate_desc": "¿Quieres CF Football Bypass en tu idioma? Puedes contribuir traducciones en GitHub.",
+    "update_new": "Nueva versión disponible",
+    "update_current": "Versión actual",
+    "update_view": "Ver release"
   },
   "common": {
     "save": "Guardar",

@@ -118,7 +118,7 @@
     "record": "Record",
     "type": "Type",
     "remove": "Remove record",
-    "add": "+ Add record",
+    "add": "Add",
     "behavior": "Behavior",
     "interval": "Check interval",
     "min_isps": "Min ISPs blocking",
@@ -138,7 +138,8 @@
     "email": "Email (for Global Key)",
     "account_id": "Account ID (for Account Token)",
     "test_connection": "Test connection",
-    "connection_ok": "Connection OK: zone {zone}"
+    "connection_ok": "Connection OK: zone {zone}",
+    "add_credential": "Add"
   },
   "notifications": {
     "title": "Notifications",
@@ -247,7 +248,10 @@
     "credits_original": "David Carrero / Color Vivo for the original WordPress plugin",
     "credits_community": "The Docker and Cloudflare communities",
     "translate": "Translate",
-    "translate_desc": "Want CF Football Bypass in your language? Contribute translations on GitHub."
+    "translate_desc": "Want CF Football Bypass in your language? Contribute translations on GitHub.",
+    "update_new": "New version available",
+    "update_current": "Current version",
+    "update_view": "View release"
   },
   "common": {
     "save": "Save",

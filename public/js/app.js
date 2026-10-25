@@ -610,7 +610,7 @@ const App = (() => {
             <h2 class="section-sub">${t("domains.cf_credentials")}</h2>
             <span class="hint">${t("domains.cf_credentials_hint")}</span>
           </div>
-          <button class="btn btn-sm" onclick="App.showAddCfCredential()">+ Cuenta CF</button>
+          <button class="btn btn-sm" onclick="App.showAddCfCredential()">+ ${t("domains.add_credential") || "Añadir"}</button>
         </div>
         <div id="cfCredentialsList" style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
           ${(Array.isArray(cf) ? cf : (cf ? [cf] : [])).map((c) => `
@@ -942,9 +942,20 @@ const App = (() => {
         <div style="text-align:center;padding:24px 0">
           <img src="/img/logo.png" alt="CF Football Bypass" style="width:96px;height:auto;margin-bottom:12px">
           <h2 style="margin:0;font-size:22px;font-weight:700">CF Football Bypass</h2>
-          <p style="margin:4px 0 0;color:var(--text-muted)">Panel v${esc(info.version)}</p>
+          <p style="margin:4px 0 0;color:var(--text-muted)">v${esc(info.version)}</p>
         </div>
       </div>
+
+      ${info.updateAvailable ? `
+      <div class="alert-warn" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:8px;margin-bottom:0">
+        <span style="font-size:18px">&#9888;</span>
+        <div style="flex:1">
+          <strong>${t("about.update_new") || "Nueva versión disponible"}: v${esc(info.latestVersion)}</strong>
+          <div style="font-size:13px;margin-top:2px;opacity:.85">${t("about.update_current") || "Versión actual"}: v${esc(info.version)}</div>
+        </div>
+        <a href="${esc(info.releaseUrl)}" target="_blank" rel="noopener" class="btn btn-sm" style="white-space:nowrap">${t("about.update_view") || "Ver release"}</a>
+      </div>
+      ` : ""}
 
       <div class="card">
         <div class="stats-grid">

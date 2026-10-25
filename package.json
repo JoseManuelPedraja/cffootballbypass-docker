@@ -1,6 +1,6 @@
 {
   "name": "cffootballbypass-panel",
-  "version": "3.0.0-dev",
+  "version": "3.0.0",
   "description": "CF Football Bypass — Monitoring panel & autonomous Cloudflare proxy manager",
   "main": "server/server.js",
   "scripts": {
