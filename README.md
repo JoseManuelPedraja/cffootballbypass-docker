@@ -1,4 +1,4 @@
-<div align="center">
+<img width="1919" height="908" alt="imagen" src="https://github.com/user-attachments/assets/44773dd4-508e-4a26-9793-e278bab93446" /><div align="center">
 
 # CF Football Bypass
 
@@ -7,6 +7,7 @@
 [![Licencia](https://img.shields.io/badge/license-GPL--2.0-blue.svg?style=for-the-badge)](LICENSE)
 
 **Evita automáticamente los bloqueos por IP durante las retransmisiones de fútbol en España, alternando el estado del proxy de Cloudflare en tus dominios.**
+<img width="1919" height="908" alt="imagen" src="https://github.com/user-attachments/assets/6dbb1f9f-f29b-4601-8224-781c06ec64e6" />
 
 [Inicio rápido](#-inicio-rápido) &bull; [Panel v3.0](#-panel-v30) &bull; [Configuración](#%EF%B8%8F-configuración) &bull; [Seguridad](#%EF%B8%8F-seguridad) &bull; [Preguntas frecuentes](#-preguntas-frecuentes)
 
