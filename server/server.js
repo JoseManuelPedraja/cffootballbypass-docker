@@ -16,6 +16,7 @@ const { BypassEngine } = require("./bypass");
 const { NotificationManager } = require("./notification/manager");
 const { apiRoutes } = require("./routes/api");
 const { metricsRoutes } = require("./routes/metrics");
+const { CloudflaredManager } = require("./cloudflared");
 
 const PORT = parseInt(process.env.CFB_PORT || "3001", 10);
 const HOST = process.env.CFB_HOST || "0.0.0.0";
@@ -46,6 +47,9 @@ async function main() {
 
   // ── Bypass engine ─────────────────────────────────────────────
   const bypass = new BypassEngine(db, notifications);
+
+  // ── Cloudflared tunnel ────────────────────────────────────────
+  const cloudflared = new CloudflaredManager(db);
 
   // ── Express ───────────────────────────────────────────────────
   const app = express();
@@ -242,7 +246,7 @@ async function main() {
   );
 
   // ── API routes (authenticated) ────────────────────────────────
-  app.use("/api", apiLimiter, apiRoutes(db, auth, bypass, notifications));
+  app.use("/api", apiLimiter, apiRoutes(db, auth, bypass, notifications, cloudflared));
 
   // ── Prometheus metrics ────────────────────────────────────────
   app.use("/metrics", metricsRoutes(db, bypass));
@@ -310,11 +314,13 @@ async function main() {
     console.log(`[Server] http://${HOST}:${PORT}`);
     console.log(`[Server] Prometheus metrics: /metrics`);
     bypass.start().catch(err => console.error("[Bypass] Start error:", err));
+    cloudflared.start().catch(err => console.error("[Cloudflared] Start error:", err));
   });
 
   // ── Graceful shutdown ─────────────────────────────────────────
   const shutdown = () => {
     console.log("\n[Server] Shutting down...");
+    cloudflared.stop();
     bypass.stop();
     server.close(() => {
       db.close();

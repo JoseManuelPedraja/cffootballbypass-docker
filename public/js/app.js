@@ -187,10 +187,6 @@ const App = (() => {
 
   // ── Shell ─────────────────────────────────────────────────────
   function renderShell() {
-    const bypassOn = status?.bypassActive;
-    const statusDot = bypassOn
-      ? '<span class="sidebar-status-dot off" title="Bypass activo"></span>'
-      : '<span class="sidebar-status-dot on" title="Funcionando"></span>';
     return `
       <div class="app">
         <nav class="sidebar" id="sidebar">
@@ -198,7 +194,6 @@ const App = (() => {
             <img src="/img/logo.png" alt="CFB" class="sidebar-logo-img">
             <div class="sidebar-brand">
               <div class="sidebar-brand-name">CF Football Bypass</div>
-              <div class="sidebar-brand-ver">${t("app.version")} ${statusDot}</div>
             </div>
             <button class="sidebar-toggle" id="sidebarToggle" onclick="App.toggleSidebar()">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -787,17 +782,18 @@ const App = (() => {
   async function loadSecurity(container) {
     container.innerHTML = `<p>${t("common.loading")}</p>`;
     try {
-      const [keys, audit] = await Promise.all([
+      const [keys, audit, cfStatus] = await Promise.all([
         api("GET", "/api-keys"),
         api("GET", "/audit?limit=50"),
+        api("GET", "/cloudflared/status").catch(() => ({ available: false })),
       ]);
-      renderSecurity(container, keys, audit);
+      renderSecurity(container, keys, audit, cfStatus);
     } catch (err) {
       container.innerHTML = `<div class="alert-error">${esc(err.message)}</div>`;
     }
   }
 
-  function renderSecurity(container, keys, audit) {
+  function renderSecurity(container, keys, audit, cfStatus) {
     container.innerHTML = `
       <div class="page-header">
         <h1>${t("security.title")}</h1>
@@ -864,6 +860,34 @@ const App = (() => {
         </div>
       </div>
 
+      <!-- Cloudflare Tunnel -->
+      <div class="card">
+        <h2 class="section-sub">${t("security.tunnel_title")}</h2>
+        <p class="hint">${t("security.tunnel_desc")}</p>
+        ${!cfStatus.available ? `
+          <div class="alert-warn" style="margin-top:12px">${t("security.tunnel_not_available")}</div>
+        ` : `
+          <div class="form-grid" style="margin-top:12px">
+            <div class="form-group" style="grid-column:1/-1">
+              <label class="label">${t("security.tunnel_token")}</label>
+              <input class="input" id="cfTunnelToken" type="password" placeholder="eyJhIjoi..." value="">
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            ${cfStatus.running
+              ? `<button class="btn btn-danger btn-sm" onclick="App.stopTunnel()">${t("security.tunnel_stop")}</button>
+                 <span class="tag tag-ok">${t("security.tunnel_running")}</span>`
+              : `<button class="btn btn-sm" onclick="App.startTunnel()">${t("security.tunnel_start")}</button>
+                 <span class="tag tag-muted">${t("security.tunnel_stopped")}</span>`
+            }
+            ${cfStatus.error ? `<span class="hint" style="color:var(--red)">${esc(cfStatus.error)}</span>` : ""}
+          </div>
+          <p class="hint" style="margin-top:12px">
+            ${t("security.tunnel_help")}
+          </p>
+        `}
+      </div>
+
       <!-- Audit log -->
       <div class="card">
         <h2 class="section-sub">${t("security.audit_log")}</h2>
@@ -914,7 +938,7 @@ const App = (() => {
 
       <div class="about-hero card">
         <div style="text-align:center;padding:24px 0">
-          <img src="/img/logo.png" alt="CF Football Bypass" style="width:80px;height:80px;margin-bottom:12px">
+          <img src="/img/logo.png" alt="CF Football Bypass" style="width:96px;height:auto;margin-bottom:12px">
           <h2 style="margin:0;font-size:22px;font-weight:700">CF Football Bypass</h2>
           <p style="margin:4px 0 0;color:var(--text-muted)">Panel v${esc(info.version)}</p>
         </div>
@@ -1344,6 +1368,27 @@ const App = (() => {
     }
   }
 
+  async function startTunnel() {
+    try {
+      const token = document.getElementById("cfTunnelToken")?.value?.trim();
+      await api("POST", "/cloudflared/start", { token: token || undefined });
+      showToast(t("security.tunnel_started"));
+      navigate("security");
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
+  async function stopTunnel() {
+    try {
+      await api("POST", "/cloudflared/stop");
+      showToast(t("security.tunnel_stopped"));
+      navigate("security");
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
   async function showAddNotification() {
     const types = window._notifTypes || [];
     const form = document.getElementById("notifForm");
@@ -1512,7 +1557,7 @@ const App = (() => {
     filterLogs,
     setup2FA, verify2FA,
     changePassword,
-    createApiKey, revokeApiKey,
+    createApiKey, revokeApiKey, startTunnel, stopTunnel,
     showAddNotification, updateNotifFields, saveNotification,
     testNotif, editNotif, deleteNotif,
   };
