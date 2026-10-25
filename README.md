@@ -1,5 +1,3 @@
-<div align="center">
-
 # CF Football Bypass
 
 [![GHCR](https://img.shields.io/badge/ghcr.io-%23181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/JoseManuelPedraja/cffootballbypass-docker/pkgs/container/cffootballbypass-docker)
@@ -8,9 +6,9 @@
 
 **Evita automáticamente los bloqueos por IP durante las retransmisiones de fútbol en España, alternando el estado del proxy de Cloudflare en tus dominios.**
 
-<img width="1919" height="906" alt="imagen" src="https://github.com/user-attachments/assets/27562d26-4e86-49f5-8c8c-f2f587551b8c" />
+<img width="1919" height="908" alt="imagen" src="https://github.com/user-attachments/assets/44773dd4-508e-4a26-9793-e278bab93446" /><div align="center">
 
-[Inicio rápido](#-inicio-rápido) &bull; [Panel](#-panel) &bull; [Cloudflare API](#-configurar-cloudflare) &bull; [Exposición segura](#-exposición-segura) &bull; [Seguridad](#%EF%B8%8F-seguridad) &bull; [FAQ](#-preguntas-frecuentes)
+[Inicio rápido](#-inicio-rápido) &bull; [Panel v3.0](#-panel-v30) &bull; [Cloudflare API](#-configurar-cloudflare) &bull; [Exposición segura](#-exposición-segura) &bull; [Seguridad](#%EF%B8%8F-seguridad) &bull; [FAQ](#-preguntas-frecuentes)
 
 </div>
 
@@ -43,7 +41,7 @@ Accede a `http://tu-servidor:3001`. Al iniciar por primera vez, aparecerá un as
 
 ---
 
-## 🖥 Panel
+## 🖥 Panel v3.0
 
 | Funcionalidad | Detalle |
 |---------|--------|
@@ -184,7 +182,21 @@ El panel escucha en HTTP por defecto. **Nunca lo expongas directamente a Interne
 
 [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) crea un túnel cifrado desde tu servidor a la red de Cloudflare. No necesitas abrir puertos, ni certificados SSL, ni IP pública. Es lo que usa [Uptime Kuma](https://github.com/louislam/uptime-kuma) y otras aplicaciones self-hosted.
 
-<img width="1919" height="898" alt="imagen" src="https://github.com/user-attachments/assets/22ea8ba3-4b43-46d0-bbb4-c7f406fa38a0" />
+```yaml
+services:
+  cfb-panel:
+    image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
+    container_name: cfb-panel
+    restart: unless-stopped
+    volumes:
+      - cfb-data:/app/data
+    environment:
+      - CFB_TRUST_PROXY=true
+      - CFB_SESSION_SECRET=cambia-esto-por-algo-seguro
+
+volumes:
+  cfb-data:
+```
 
 **Configuración en Cloudflare:**
 

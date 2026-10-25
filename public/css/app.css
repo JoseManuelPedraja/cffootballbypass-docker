@@ -776,15 +776,20 @@ img { max-width: 100%; }
 
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .app { flex-direction: column; }
   .sidebar {
     width: 100%;
     min-width: 100%;
-    position: relative;
+    position: sticky;
+    top: 0;
+    z-index: 100;
     height: auto;
     border-right: none;
     border-bottom: 1px solid var(--sidebar-border);
   }
-  .sidebar-header { padding: 14px 16px 14px; border-bottom: none; }
+  .sidebar-header { padding: 12px 16px; border-bottom: none; }
+  .sidebar-logo-img { width: 36px; }
+  .sidebar-brand-name { font-size: 14px; }
   .sidebar-toggle { display: block; }
   .sidebar-nav {
     display: none;
@@ -794,12 +799,30 @@ img { max-width: 100%; }
   .sidebar-nav.open { display: flex; }
   .sidebar .nav-btn { padding: 12px; }
   .sidebar-spacer { min-height: 8px; }
-  .hero { flex-direction: column; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
-  .mode-grid { grid-template-columns: 1fr 1fr; }
+  .sidebar-user { margin: 0 8px 8px; padding: 10px 12px; }
+  .hero { flex-direction: column; padding: 16px; gap: 16px; }
+  .hero-title { font-size: 20px; }
+  .hero-dot { width: 44px; height: 44px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { padding: 12px; }
+  .stat-value { font-size: 22px; }
+  .mode-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .mode-btn { min-height: 56px; padding: 10px 12px; }
   .form-grid { grid-template-columns: 1fr; }
-  .main { padding: 24px 16px; }
-  .page-header h1 { font-size: 22px; }
+  .main { padding: 16px; gap: 16px; }
+  .page-header h1 { font-size: 20px; }
+  .card { padding: 16px; border-radius: 10px; }
+  .table-wrap table { min-width: 500px; }
+  .section-header { gap: 8px; }
+  .section-header h2 { font-size: 16px; }
+  .btn { min-height: 40px; padding: 0 16px; font-size: 14px; }
+  .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; }
+  .save-bar { padding: 12px 0; }
+  .notif-card { padding: 12px; }
+  .filter-btn { min-height: 36px; padding: 0 12px; font-size: 13px; }
+  .login-form { padding: 28px 24px; gap: 16px; }
+  .login-header h1 { font-size: 20px; }
+  .about-hero .stats-grid { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 769px) {

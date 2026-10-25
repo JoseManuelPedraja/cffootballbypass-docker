@@ -183,6 +183,8 @@ const App = (() => {
     document.querySelectorAll(".sidebar .nav-btn").forEach((el) => {
       el.classList.toggle("active", el.dataset.view === view);
     });
+    const nav = document.getElementById("sidebarNav");
+    if (nav) nav.classList.remove("open");
   }
 
   // ── Shell ─────────────────────────────────────────────────────
