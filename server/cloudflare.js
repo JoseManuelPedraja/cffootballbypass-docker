@@ -57,6 +57,25 @@ class CloudflareClient {
     return { changed: true, from: record.proxied, to: proxied };
   }
 
+  async listDnsRecords() {
+    const allRecords = [];
+    let page = 1;
+    while (true) {
+      const url = `${this.baseUrl}/zones/${this.zoneId}/dns_records?page=${page}&per_page=100`;
+      const resp = await fetch(url, {
+        headers: this.getHeaders(),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.errors?.[0]?.message || "Error listing DNS");
+      allRecords.push(...data.result);
+      if (!data.result_info || data.result_info.page >= data.result_info.total_pages) break;
+      page++;
+    }
+    return allRecords;
+  }
+
   async testConnection() {
     const url = `${this.baseUrl}/zones/${this.zoneId}`;
     const resp = await fetch(url, {

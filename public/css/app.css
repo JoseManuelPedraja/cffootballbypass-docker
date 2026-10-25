@@ -718,6 +718,35 @@ img { max-width: 100%; }
   font-family: var(--font-mono);
 }
 
+/* ── DNS import grid ───────────────────────────────────────── */
+.dns-import-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.dns-import-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.dns-import-item:hover { border-color: var(--text-muted); }
+.dns-import-item:has(input:checked) { border-color: var(--accent); background: var(--bg-active); }
+.dns-import-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--accent); }
+.dns-import-info { min-width: 0; flex: 1; }
+.dns-import-name { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.dns-import-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dns-import-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.dns-import-meta .mono { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
 /* ── Feed card ─────────────────────────────────────────────── */
 .feed-card .section-header { align-items: center; }
 .stat-warn { color: var(--amber); }

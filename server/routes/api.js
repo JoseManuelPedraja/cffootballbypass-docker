@@ -112,6 +112,58 @@ function apiRoutes(db, auth, bypass, notifications) {
     }
   });
 
+  // ── Cloudflare DNS record listing ───────────────────────────────
+  router.get("/cloudflare/:id/dns-records", requireSession, async (req, res) => {
+    try {
+      const cred = await db.getCfCredentials(parseInt(req.params.id, 10));
+      if (!cred) return res.status(404).json({ error: "Credencial no encontrada" });
+      const client = new CloudflareClient(cred);
+      const records = await client.listDnsRecords();
+      const filtered = records.filter(r => ["A", "AAAA", "CNAME"].includes(r.type));
+      res.json(filtered.map(r => ({
+        cf_id: r.id,
+        name: r.name,
+        type: r.type,
+        content: r.content,
+        proxied: r.proxied,
+        proxiable: r.proxiable,
+        ttl: r.ttl,
+      })));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // ── Domain import from Cloudflare ─────────────────────────────
+  router.post("/domains/import", requireSession, async (req, res) => {
+    const { records, cf_credential_id } = req.body;
+    if (!Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({ error: "No hay registros seleccionados" });
+    }
+    const existing = await db.getDomains();
+    const imported = [];
+    for (const r of records) {
+      const parts = r.name.split(".");
+      let domain, record;
+      if (parts.length > 2) {
+        domain = parts.slice(-2).join(".");
+        record = parts.slice(0, -2).join(".");
+      } else {
+        domain = r.name;
+        record = "@";
+      }
+      const alreadyExists = existing.some(
+        (e) => e.domain === domain && e.record === record && e.type === r.type
+      );
+      if (!alreadyExists) {
+        const d = await db.addDomain(domain, record, r.type, cf_credential_id || null);
+        imported.push(d);
+      }
+    }
+    await db.audit(req.session.userId, "domains_imported", `${imported.length} registros importados`, req.ip);
+    res.json({ ok: true, imported: imported.length, skipped: records.length - imported.length });
+  });
+
   // ── Bypass control ─────────────────────────────────────────────
   router.post("/bypass/mode", requireSession, async (req, res) => {
     const { mode } = req.body;

@@ -510,7 +510,12 @@ const App = (() => {
       <div class="card">
         <div class="section-header">
           <h2 class="section-sub">${t("domains.watched_records")}</h2>
-          <button class="btn btn-sm" onclick="App.addDomainRow()">${t("domains.add")}</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="App.showImportDns()">
+              ${cfCloud(true)} Importar desde Cloudflare
+            </button>
+            <button class="btn btn-sm" onclick="App.addDomainRow()">+ ${t("domains.add")}</button>
+          </div>
         </div>
         <div class="table-wrap" style="margin-top:12px">
           <table>
@@ -593,6 +598,7 @@ const App = (() => {
       </div>
 
       <div id="cfCredForm" hidden></div>
+      <div id="dnsImportPanel" hidden></div>
 
       <div class="save-bar">
         <button class="btn" onclick="App.saveDomainSettings()">${t("domains.save")}</button>
@@ -1071,6 +1077,120 @@ const App = (() => {
     }
   }
 
+  async function showImportDns() {
+    const panel = document.getElementById("dnsImportPanel");
+    if (!panel) return;
+    panel.hidden = false;
+    try {
+      const creds = await api("GET", "/cloudflare");
+      if (!creds.length) {
+        panel.innerHTML = `<div class="card" style="border-color:var(--amber)"><p>Primero configura una cuenta de Cloudflare arriba.</p></div>`;
+        return;
+      }
+      panel.innerHTML = `
+        <div class="card" style="border-color:var(--accent)">
+          <div class="section-header">
+            <h2 class="section-sub">${cfCloud(true)} Importar registros DNS</h2>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dnsImportPanel').hidden=true">Cerrar</button>
+          </div>
+          <div class="form-group" style="margin-top:12px;max-width:300px">
+            <label class="label">Cuenta Cloudflare</label>
+            <select class="select" id="importCfCred">
+              ${creds.map((c) => `<option value="${c.id}">${esc(c.label || "Cuenta " + c.id)} (${esc(c.zone_id ? c.zone_id.substring(0, 8) + "..." : "")})</option>`).join("")}
+            </select>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-sm" onclick="App.fetchDnsRecords()">Cargar registros DNS</button>
+          </div>
+          <div id="dnsRecordsList" style="margin-top:12px"></div>
+        </div>`;
+    } catch (err) {
+      panel.innerHTML = `<div class="alert-error">${esc(err.message)}</div>`;
+    }
+  }
+
+  async function fetchDnsRecords() {
+    const credId = document.getElementById("importCfCred")?.value;
+    const list = document.getElementById("dnsRecordsList");
+    if (!credId || !list) return;
+    list.innerHTML = `<p>${t("common.loading")}</p>`;
+    try {
+      const records = await api("GET", `/cloudflare/${credId}/dns-records`);
+      if (!records.length) {
+        list.innerHTML = `<p class="hint">No se encontraron registros DNS (A/AAAA/CNAME).</p>`;
+        return;
+      }
+      window._importRecords = records;
+      window._importCredId = parseInt(credId, 10);
+      list.innerHTML = `
+        <div style="margin-bottom:10px;display:flex;gap:12px;align-items:center">
+          <label style="font-size:14px;font-weight:600;cursor:pointer">
+            <input type="checkbox" id="dnsSelectAll" onchange="App.toggleAllDns(this.checked)" style="margin-right:6px">
+            Seleccionar todos (${records.length})
+          </label>
+          <span class="hint" id="dnsSelectedCount">0 seleccionados</span>
+        </div>
+        <div class="dns-import-grid">
+          ${records.map((r, i) => `
+            <label class="dns-import-item" data-idx="${i}">
+              <input type="checkbox" class="dns-check" data-idx="${i}" onchange="App.updateDnsCount()">
+              <div class="dns-import-info">
+                <div class="dns-import-name">
+                  ${cfCloud(r.proxied)}
+                  <strong>${esc(r.name)}</strong>
+                </div>
+                <div class="dns-import-meta">
+                  <span class="tag tag-panel">${esc(r.type)}</span>
+                  <span class="mono">${esc(r.content)}</span>
+                  <span class="pill ${r.proxied ? "pill-on" : "pill-off"}" style="font-size:11px">
+                    <span class="pill-dot"></span>${r.proxied ? "Proxy ON" : "Proxy OFF"}
+                  </span>
+                </div>
+              </div>
+            </label>
+          `).join("")}
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="App.importSelectedDns()">Importar seleccionados</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dnsImportPanel').hidden=true">Cancelar</button>
+        </div>`;
+    } catch (err) {
+      list.innerHTML = `<div class="alert-error">${esc(err.message)}</div>`;
+    }
+  }
+
+  function toggleAllDns(checked) {
+    document.querySelectorAll(".dns-check").forEach((cb) => { cb.checked = checked; });
+    updateDnsCount();
+  }
+
+  function updateDnsCount() {
+    const checked = document.querySelectorAll(".dns-check:checked").length;
+    const el = document.getElementById("dnsSelectedCount");
+    if (el) el.textContent = `${checked} seleccionados`;
+  }
+
+  async function importSelectedDns() {
+    const records = window._importRecords || [];
+    const credId = window._importCredId;
+    const selected = [];
+    document.querySelectorAll(".dns-check:checked").forEach((cb) => {
+      const idx = parseInt(cb.dataset.idx, 10);
+      if (records[idx]) selected.push(records[idx]);
+    });
+    if (!selected.length) { showToast("Selecciona al menos un registro", true); return; }
+    try {
+      const res = await api("POST", "/domains/import", {
+        records: selected,
+        cf_credential_id: credId,
+      });
+      showToast(`Importados: ${res.imported}, ya existían: ${res.skipped || 0}`);
+      navigate("domains");
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
   function filterLogs(type) {
     document.querySelectorAll(".filter-btn").forEach((b) => b.classList.toggle("active", b.dataset.filter === type));
     document.querySelectorAll("#logList tr").forEach((row) => {
@@ -1312,6 +1432,7 @@ const App = (() => {
     forceCheck, setMode,
     addDomainRow, saveDomainSettings,
     showAddCfCredential, saveCfCredential, editCfCredential, deleteCfCredential, testCfForm,
+    showImportDns, fetchDnsRecords, toggleAllDns, updateDnsCount, importSelectedDns,
     filterLogs,
     setup2FA, verify2FA,
     changePassword,
