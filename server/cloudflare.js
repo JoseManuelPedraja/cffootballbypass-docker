@@ -66,9 +66,11 @@ class CloudflareClient {
         headers: this.getHeaders(),
         signal: AbortSignal.timeout(15000),
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      if (!data.success) throw new Error(data.errors?.[0]?.message || "Error listing DNS");
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.success) {
+        const msg = data.errors?.map((e) => e.message).join("; ") || `HTTP ${resp.status}`;
+        throw new Error(`Cloudflare API: ${msg}`);
+      }
       allRecords.push(...data.result);
       if (!data.result_info || data.result_info.page >= data.result_info.total_pages) break;
       page++;

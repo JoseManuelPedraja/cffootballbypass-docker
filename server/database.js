@@ -375,19 +375,22 @@ class Database {
   }
 
   async saveCfCredentials(data) {
-    const enc = this.encrypt(data.api_token);
     if (data.id) {
-      await this.knex("cf_credentials").where("id", data.id).update({
+      const update = {
         label: data.label || "Default",
         auth_type: data.auth_type,
-        api_token_enc: enc,
         zone_id: data.zone_id,
         email: data.email || null,
         account_id: data.account_id || null,
         updated_at: this.knex.fn.now(),
-      });
+      };
+      if (data.api_token) {
+        update.api_token_enc = this.encrypt(data.api_token);
+      }
+      await this.knex("cf_credentials").where("id", data.id).update(update);
       return data.id;
     }
+    const enc = this.encrypt(data.api_token);
     const [id] = await this.knex("cf_credentials").insert({
       label: data.label || "Default",
       auth_type: data.auth_type,

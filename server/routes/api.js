@@ -85,8 +85,11 @@ function apiRoutes(db, auth, bypass, notifications) {
 
   router.put("/cloudflare", requireSession, async (req, res) => {
     const { id, label, auth_type, api_token, zone_id, email, account_id } = req.body;
-    if (!api_token || !zone_id) {
-      return res.status(400).json({ error: "Token y Zone ID requeridos" });
+    if (!zone_id) {
+      return res.status(400).json({ error: "Zone ID requerido" });
+    }
+    if (!id && !api_token) {
+      return res.status(400).json({ error: "API Token requerido" });
     }
     const credId = await db.saveCfCredentials({ id, label, auth_type, api_token, zone_id, email, account_id });
     await db.audit(req.session.userId, "cf_credentials_changed", `${label || "Default"} (${auth_type})`, req.ip);
