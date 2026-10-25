@@ -46,6 +46,22 @@ const App = (() => {
 
   function getCurrentLang() { return _langCode; }
 
+  function flagSvg(code, size = 20) {
+    if (code === "es") return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" style="border-radius:50%;vertical-align:middle"><rect width="32" height="32" fill="#c60b1e"/><rect y="8" width="32" height="16" fill="#ffc400"/></svg>`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" style="border-radius:50%;vertical-align:middle"><rect width="32" height="32" fill="#012169"/><path d="M0 0L32 32M32 0L0 32" stroke="#fff" stroke-width="5"/><path d="M0 0L32 32M32 0L0 32" stroke="#C8102E" stroke-width="3"/><path d="M16 0V32M0 16H32" stroke="#fff" stroke-width="9"/><path d="M16 0V32M0 16H32" stroke="#C8102E" stroke-width="5"/></svg>`;
+  }
+
+  function langPicker(location) {
+    const langs = [
+      { code: "es", label: "Español" },
+      { code: "en", label: "English" },
+    ];
+    const cur = getCurrentLang();
+    const next = langs.find((l) => l.code !== cur) || langs[0];
+    const cls = location === "sidebar" ? "lang-btn sidebar-lang-btn" : "lang-btn login-lang-btn";
+    return `<button class="${cls}" onclick="App.changeLang('${next.code}')" title="${next.label}">${flagSvg(cur)}</button>`;
+  }
+
   async function changeLang(code) {
     await loadLang(code);
     try { localStorage.setItem("cfb_lang", code); } catch {}
@@ -210,10 +226,7 @@ const App = (() => {
             <div class="sidebar-spacer"></div>
             <div class="sidebar-controls">
               <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()"></button>
-              <select class="select select-sm sidebar-lang" onchange="App.changeLang(this.value)">
-                <option value="es" ${getCurrentLang() === "es" ? "selected" : ""}>ES</option>
-                <option value="en" ${getCurrentLang() === "en" ? "selected" : ""}>EN</option>
-              </select>
+              ${langPicker("sidebar")}
             </div>
             <div class="sidebar-user">
               <div class="sidebar-avatar">${adminAvatar()}</div>
@@ -258,10 +271,7 @@ const App = (() => {
           </div>
           <button class="btn btn-login" type="submit">${t("auth.login")}</button>
           <div class="login-lang">
-            <select class="select select-sm" onchange="App.changeLang(this.value)">
-              <option value="es" ${getCurrentLang() === "es" ? "selected" : ""}>Español</option>
-              <option value="en" ${getCurrentLang() === "en" ? "selected" : ""}>English</option>
-            </select>
+            ${langPicker("login")}
           </div>
         </form>
       </div>`;
