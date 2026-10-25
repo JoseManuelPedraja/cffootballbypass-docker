@@ -402,8 +402,12 @@ class Database {
     return id;
   }
 
-  async deleteCfCredential(id) {
-    await this.knex("domains").where("cf_credential_id", id).update({ cf_credential_id: null });
+  async deleteCfCredential(id, deleteDomains = true) {
+    if (deleteDomains) {
+      await this.knex("domains").where("cf_credential_id", id).del();
+    } else {
+      await this.knex("domains").where("cf_credential_id", id).update({ cf_credential_id: null });
+    }
     await this.knex("cf_credentials").where("id", id).del();
   }
 

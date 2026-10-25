@@ -26,7 +26,11 @@ class CloudflareClient {
     const headers = this.getHeaders();
 
     const resp = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status} querying DNS`);
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      const msg = errData.errors?.map((e) => e.message).join("; ") || `HTTP ${resp.status}`;
+      throw new Error(`CF API: ${msg}`);
+    }
 
     const data = await resp.json();
     if (!data.result || data.result.length === 0) {

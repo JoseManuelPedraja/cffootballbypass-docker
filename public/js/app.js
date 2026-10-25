@@ -506,21 +506,26 @@ const App = (() => {
         </div>
       </div>
 
+      <!-- Import panel (at top) -->
+      <div id="dnsImportPanel" hidden></div>
+
       <!-- Domains table -->
       <div class="card">
         <div class="section-header">
           <h2 class="section-sub">${t("domains.watched_records")}</h2>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="App.showImportDns()">
-              ${cfCloud(true)} Importar desde Cloudflare
+              ${cfCloud(true)} Importar desde CF
             </button>
             <button class="btn btn-sm" onclick="App.addDomainRow()">+ ${t("domains.add")}</button>
           </div>
         </div>
+        ${domains.length ? `<p class="hint" style="margin:4px 0 0">Solo los dominios con el toggle activado se gestionan durante el bypass.</p>` : ""}
         <div class="table-wrap" style="margin-top:12px">
           <table>
             <thead>
               <tr>
+                <th style="width:50px">Activo</th>
                 <th>${t("domains.domain")}</th>
                 <th>${t("domains.record")}</th>
                 <th>${t("domains.type")}</th>
@@ -598,7 +603,6 @@ const App = (() => {
       </div>
 
       <div id="cfCredForm" hidden></div>
-      <div id="dnsImportPanel" hidden></div>
 
       <div class="save-bar">
         <button class="btn" onclick="App.saveDomainSettings()">${t("domains.save")}</button>
@@ -607,8 +611,13 @@ const App = (() => {
   }
 
   function renderDomainRow(d) {
+    const isNew = d.id === "new";
+    const enabled = d.enabled !== 0 && d.enabled !== false;
     return `
       <tr data-id="${d.id}">
+        <td style="text-align:center">
+          <input type="checkbox" class="domain-enabled" data-field="enabled" ${enabled ? "checked" : ""} ${isNew ? "checked" : ""} style="width:18px;height:18px;accent-color:var(--accent)">
+        </td>
         <td><input class="input" value="${esc(d.domain)}" data-field="domain"></td>
         <td><input class="input" value="${esc(d.record || "")}" data-field="record"></td>
         <td>
@@ -961,7 +970,23 @@ const App = (() => {
         stale_threshold_hours: parseInt(document.getElementById("settStale").value, 10),
       });
 
+      const rows = document.querySelectorAll("#domainRows tr");
+      for (const row of rows) {
+        const id = row.dataset.id;
+        const domain = row.querySelector("[data-field=domain]")?.value;
+        const record = row.querySelector("[data-field=record]")?.value;
+        const type = row.querySelector("[data-field=type]")?.value;
+        const enabled = row.querySelector("[data-field=enabled]")?.checked;
+        if (!domain) continue;
+        if (id === "new") {
+          await api("POST", "/domains", { domain, record, type });
+        } else {
+          await api("PUT", `/domains/${id}`, { domain, record, type, enabled });
+        }
+      }
+
       showToast(t("common.success"));
+      navigate("domains");
     } catch (err) {
       showToast(err.message, true);
     }
@@ -1007,7 +1032,7 @@ const App = (() => {
         </div>
         <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="App.saveCfCredential(${editData?.id || "null"})">Guardar</button>
-          <button class="btn btn-secondary btn-sm" onclick="App.testCfForm()">Probar conexión</button>
+          <button class="btn btn-secondary btn-sm" onclick="App.testCfForm(${editData?.id || "null"})">Probar conexión</button>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfCredForm').hidden=true">Cancelar</button>
           <span id="cfTestResult" class="hint"></span>
         </div>
@@ -1047,24 +1072,25 @@ const App = (() => {
   }
 
   async function deleteCfCredential(id) {
-    if (!confirm("Eliminar esta credencial de Cloudflare?")) return;
+    if (!confirm("Eliminar esta cuenta y TODOS sus dominios asociados?")) return;
     try {
-      await api("DELETE", `/cloudflare/${id}`);
-      showToast("Credencial eliminada");
+      const res = await api("DELETE", `/cloudflare/${id}`);
+      showToast(`Cuenta eliminada (${res.domainsDeleted || 0} dominios borrados)`);
       navigate("domains");
     } catch (err) {
       showToast(err.message, true);
     }
   }
 
-  async function testCfForm() {
+  async function testCfForm(credId) {
     const result = document.getElementById("cfTestResult");
     if (!result) return;
     result.textContent = t("common.loading");
     try {
       const res = await api("POST", "/cloudflare/test", {
+        id: credId || undefined,
         auth_type: document.getElementById("cfAuthType").value,
-        api_token: document.getElementById("cfToken").value,
+        api_token: document.getElementById("cfToken").value || undefined,
         zone_id: document.getElementById("cfZoneId").value,
         email: document.getElementById("cfEmail").value,
         account_id: document.getElementById("cfAccountId").value,

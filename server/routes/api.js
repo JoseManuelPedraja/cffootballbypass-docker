@@ -98,16 +98,24 @@ function apiRoutes(db, auth, bypass, notifications) {
   });
 
   router.delete("/cloudflare/:id", requireSession, async (req, res) => {
-    await db.deleteCfCredential(parseInt(req.params.id, 10));
-    await db.audit(req.session.userId, "cf_credential_deleted", req.params.id, req.ip);
+    const id = parseInt(req.params.id, 10);
+    const domainCount = (await db.getDomains()).filter((d) => d.cf_credential_id === id).length;
+    await db.deleteCfCredential(id, true);
+    await db.audit(req.session.userId, "cf_credential_deleted", `id=${req.params.id}, ${domainCount} dominios eliminados`, req.ip);
     bypass.restart();
-    res.json({ ok: true });
+    res.json({ ok: true, domainsDeleted: domainCount });
   });
 
   router.post("/cloudflare/test", requireSession, async (req, res) => {
     try {
-      const { auth_type, api_token, zone_id, email, account_id } = req.body;
-      const client = new CloudflareClient({ auth_type, api_token, zone_id, email, account_id });
+      const { id, auth_type, api_token, zone_id, email, account_id } = req.body;
+      let creds = { auth_type, api_token, zone_id, email, account_id };
+      if (id && !api_token) {
+        const stored = await db.getCfCredentials(id);
+        if (!stored) return res.status(404).json({ error: "Credencial no encontrada" });
+        creds = { ...stored, ...creds, api_token: stored.api_token };
+      }
+      const client = new CloudflareClient(creds);
       const result = await client.testConnection();
       res.json(result);
     } catch (err) {
