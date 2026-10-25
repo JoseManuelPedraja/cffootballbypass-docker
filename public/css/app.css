@@ -690,6 +690,34 @@ img { max-width: 100%; }
 /* ── CF cloud icon ─────────────────────────────────────────── */
 .cf-proxy-icon { display: inline-flex; align-items: center; vertical-align: middle; margin-right: 4px; }
 
+/* ── CF credential cards ───────────────────────────────────── */
+.cf-cred-card {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.cf-cred-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cf-cred-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.cf-cred-info strong { font-size: 14px; }
+.cf-cred-meta {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
 /* ── Feed card ─────────────────────────────────────────────── */
 .feed-card .section-header { align-items: center; }
 .stat-warn { color: var(--amber); }

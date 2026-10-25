@@ -563,39 +563,36 @@ const App = (() => {
 
       <!-- CF Credentials -->
       <div class="card">
-        <h2 class="section-sub">${t("domains.cf_credentials")}</h2>
-        <span class="hint">${t("domains.cf_credentials_hint")}</span>
-        <div class="form-grid" style="margin-top:12px">
-          <div class="form-group">
-            <label class="label">${t("domains.auth_type")}</label>
-            <select class="select" id="cfAuthType">
-              <option value="token" ${cf?.auth_type === "token" ? "selected" : ""}>API Token</option>
-              <option value="global" ${cf?.auth_type === "global" ? "selected" : ""}>Global Key</option>
-              <option value="account_token" ${cf?.auth_type === "account_token" ? "selected" : ""}>Account Token</option>
-            </select>
+        <div class="section-header">
+          <div>
+            <h2 class="section-sub">${t("domains.cf_credentials")}</h2>
+            <span class="hint">${t("domains.cf_credentials_hint")}</span>
           </div>
-          <div class="form-group">
-            <label class="label">${t("domains.api_token")}</label>
-            <input class="input" id="cfToken" type="password" placeholder="${cf?.has_token ? "••••••••" : ""}">
-          </div>
-          <div class="form-group">
-            <label class="label">${t("domains.zone_id")}</label>
-            <input class="input" id="cfZoneId" value="${esc(cf?.zone_id || "")}">
-          </div>
-          <div class="form-group">
-            <label class="label">${t("domains.email")}</label>
-            <input class="input" id="cfEmail" value="${esc(cf?.email || "")}">
-          </div>
-          <div class="form-group">
-            <label class="label">${t("domains.account_id")}</label>
-            <input class="input" id="cfAccountId" value="${esc(cf?.account_id || "")}">
-          </div>
+          <button class="btn btn-sm" onclick="App.showAddCfCredential()">+ Cuenta CF</button>
         </div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-secondary btn-sm" onclick="App.testCf()">${t("domains.test_connection")}</button>
-          <span id="cfTestResult" class="hint"></span>
+        <div id="cfCredentialsList" style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          ${(Array.isArray(cf) ? cf : (cf ? [cf] : [])).map((c) => `
+            <div class="cf-cred-card" data-cred-id="${c.id}">
+              <div class="cf-cred-header">
+                <div class="cf-cred-info">
+                  ${cfCloud(true)}
+                  <div>
+                    <strong>${esc(c.label || "Cuenta " + c.id)}</strong>
+                    <span class="cf-cred-meta">${esc(c.auth_type || "token")} &middot; Zone: ${esc(c.zone_id ? c.zone_id.substring(0, 8) + "..." : "--")}</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-secondary btn-sm" onclick="App.editCfCredential(${c.id})">Editar</button>
+                  <button class="btn btn-danger btn-sm" onclick="App.deleteCfCredential(${c.id})">Eliminar</button>
+                </div>
+              </div>
+              ${c.email ? `<span class="hint" style="margin:0">${esc(c.email)}</span>` : ""}
+            </div>
+          `).join("") || `<p class="hint">No hay credenciales configuradas</p>`}
         </div>
       </div>
+
+      <div id="cfCredForm" hidden></div>
 
       <div class="save-bar">
         <button class="btn" onclick="App.saveDomainSettings()">${t("domains.save")}</button>
@@ -958,26 +955,105 @@ const App = (() => {
         stale_threshold_hours: parseInt(document.getElementById("settStale").value, 10),
       });
 
-      const token = document.getElementById("cfToken").value;
-      const zoneId = document.getElementById("cfZoneId").value;
-      if (token && zoneId) {
-        await api("PUT", "/cloudflare", {
-          auth_type: document.getElementById("cfAuthType").value,
-          api_token: token,
-          zone_id: zoneId,
-          email: document.getElementById("cfEmail").value,
-          account_id: document.getElementById("cfAccountId").value,
-        });
-      }
-
       showToast(t("common.success"));
     } catch (err) {
       showToast(err.message, true);
     }
   }
 
-  async function testCf() {
+  function showAddCfCredential(editData) {
+    const form = document.getElementById("cfCredForm");
+    if (!form) return;
+    form.hidden = false;
+    const isEdit = !!editData;
+    form.innerHTML = `
+      <div class="card" style="margin-top:12px;border-color:var(--accent)">
+        <h2 class="section-sub">${isEdit ? "Editar cuenta Cloudflare" : "Nueva cuenta Cloudflare"}</h2>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="form-group">
+            <label class="label">Nombre / Etiqueta</label>
+            <input class="input" id="cfLabel" value="${esc(editData?.label || "")}">
+          </div>
+          <div class="form-group">
+            <label class="label">${t("domains.auth_type")}</label>
+            <select class="select" id="cfAuthType">
+              <option value="token" ${(editData?.auth_type || "token") === "token" ? "selected" : ""}>API Token</option>
+              <option value="global" ${editData?.auth_type === "global" ? "selected" : ""}>Global Key</option>
+              <option value="account_token" ${editData?.auth_type === "account_token" ? "selected" : ""}>Account Token</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="label">${t("domains.api_token")}</label>
+            <input class="input" id="cfToken" type="password" placeholder="${editData?.has_token ? "••••••••" : ""}">
+          </div>
+          <div class="form-group">
+            <label class="label">${t("domains.zone_id")}</label>
+            <input class="input" id="cfZoneId" value="${esc(editData?.zone_id || "")}">
+          </div>
+          <div class="form-group">
+            <label class="label">${t("domains.email")}</label>
+            <input class="input" id="cfEmail" value="${esc(editData?.email || "")}">
+          </div>
+          <div class="form-group">
+            <label class="label">${t("domains.account_id")}</label>
+            <input class="input" id="cfAccountId" value="${esc(editData?.account_id || "")}">
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="App.saveCfCredential(${editData?.id || "null"})">Guardar</button>
+          <button class="btn btn-secondary btn-sm" onclick="App.testCfForm()">Probar conexión</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfCredForm').hidden=true">Cancelar</button>
+          <span id="cfTestResult" class="hint"></span>
+        </div>
+      </div>`;
+  }
+
+  async function saveCfCredential(id) {
+    const token = document.getElementById("cfToken").value;
+    const zoneId = document.getElementById("cfZoneId").value;
+    if (!token && !id) { showToast("API Token requerido", true); return; }
+    if (!zoneId) { showToast("Zone ID requerido", true); return; }
+    try {
+      await api("PUT", "/cloudflare", {
+        id: id || undefined,
+        label: document.getElementById("cfLabel").value || undefined,
+        auth_type: document.getElementById("cfAuthType").value,
+        api_token: token || undefined,
+        zone_id: zoneId,
+        email: document.getElementById("cfEmail").value || undefined,
+        account_id: document.getElementById("cfAccountId").value || undefined,
+      });
+      showToast(t("common.success"));
+      navigate("domains");
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
+  async function editCfCredential(id) {
+    try {
+      const creds = await api("GET", "/cloudflare");
+      const cred = creds.find((c) => c.id === id);
+      if (cred) showAddCfCredential(cred);
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
+  async function deleteCfCredential(id) {
+    if (!confirm("Eliminar esta credencial de Cloudflare?")) return;
+    try {
+      await api("DELETE", `/cloudflare/${id}`);
+      showToast("Credencial eliminada");
+      navigate("domains");
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
+  async function testCfForm() {
     const result = document.getElementById("cfTestResult");
+    if (!result) return;
     result.textContent = t("common.loading");
     try {
       const res = await api("POST", "/cloudflare/test", {
@@ -1234,7 +1310,8 @@ const App = (() => {
   return {
     init, navigate, toggleTheme, toggleSidebar, logout,
     forceCheck, setMode,
-    addDomainRow, saveDomainSettings, testCf,
+    addDomainRow, saveDomainSettings,
+    showAddCfCredential, saveCfCredential, editCfCredential, deleteCfCredential, testCfForm,
     filterLogs,
     setup2FA, verify2FA,
     changePassword,
