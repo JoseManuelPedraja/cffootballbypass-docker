@@ -581,9 +581,9 @@ class Database {
   }
 
   // ── Session store ──────────────────────────────────────────────
-  getSessionStore(sessionLib) {
-    const KnexSessionStore = require("connect-session-knex")(sessionLib);
-    return new KnexSessionStore({ knex: this.knex, tablename: "sessions", createtable: true });
+  getSessionStore() {
+    const { ConnectSessionKnexStore } = require("connect-session-knex");
+    return new ConnectSessionKnexStore({ knex: this.knex, tablename: "sessions", createtable: true });
   }
 
   async close() {

@@ -94,7 +94,7 @@ async function main() {
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     },
-    store: db.getSessionStore(session),
+    store: db.getSessionStore(),
   });
   app.use(sessionMiddleware);
 
