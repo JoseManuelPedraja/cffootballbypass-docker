@@ -10,7 +10,7 @@
 
 <img width="1919" height="906" alt="imagen" src="https://github.com/user-attachments/assets/27562d26-4e86-49f5-8c8c-f2f587551b8c" />
 
-[Inicio rápido](#-inicio-rápido) &bull; [Panel v3.0](#-panel-v30) &bull; [Cloudflare API](#-configurar-cloudflare) &bull; [Exposición segura](#-exposición-segura) &bull; [Seguridad](#%EF%B8%8F-seguridad) &bull; [FAQ](#-preguntas-frecuentes)
+[Inicio rápido](#-inicio-rápido) &bull; [Panel](#-panel) &bull; [Cloudflare API](#-configurar-cloudflare) &bull; [Exposición segura](#-exposición-segura) &bull; [Seguridad](#%EF%B8%8F-seguridad) &bull; [FAQ](#-preguntas-frecuentes)
 
 </div>
 
@@ -43,7 +43,7 @@ Accede a `http://tu-servidor:3001`. Al iniciar por primera vez, aparecerá un as
 
 ---
 
-## 🖥 Panel v3.0
+## 🖥 Panel
 
 | Funcionalidad | Detalle |
 |---------|--------|
