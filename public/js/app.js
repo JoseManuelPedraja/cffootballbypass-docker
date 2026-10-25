@@ -10,6 +10,7 @@ const App = (() => {
   let socket = null;
   let status = {};
   let user = null;
+  let _deletedDomainIds = [];
 
   // ── i18n ──────────────────────────────────────────────────────
   function t(key, vars) {
@@ -484,6 +485,7 @@ const App = (() => {
 
   // ── Domains & Settings view ───────────────────────────────────
   async function loadDomains(container) {
+    _deletedDomainIds = [];
     container.innerHTML = `<p>${t("common.loading")}</p>`;
     try {
       const [domains, settings, cf] = await Promise.all([
@@ -627,7 +629,7 @@ const App = (() => {
             <option value="CNAME" ${d.type === "CNAME" ? "selected" : ""}>CNAME</option>
           </select>
         </td>
-        <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">${t("domains.remove")}</button></td>
+        <td><button class="btn btn-danger btn-sm" onclick="App.removeDomainRow(this)">${t("domains.remove")}</button></td>
       </tr>`;
   }
 
@@ -961,6 +963,14 @@ const App = (() => {
     tbody.insertAdjacentHTML("beforeend", renderDomainRow({ id: "new", domain: "", record: "", type: "A" }));
   }
 
+  function removeDomainRow(btn) {
+    const tr = btn.closest("tr");
+    if (!tr) return;
+    const id = tr.dataset.id;
+    if (id && id !== "new") _deletedDomainIds.push(parseInt(id, 10));
+    tr.remove();
+  }
+
   async function saveDomainSettings() {
     try {
       await api("PUT", "/settings", {
@@ -969,6 +979,11 @@ const App = (() => {
         cooldown_minutes: parseInt(document.getElementById("settCooldown").value, 10),
         stale_threshold_hours: parseInt(document.getElementById("settStale").value, 10),
       });
+
+      for (const id of _deletedDomainIds) {
+        await api("DELETE", `/domains/${id}`);
+      }
+      _deletedDomainIds = [];
 
       const rows = document.querySelectorAll("#domainRows tr");
       for (const row of rows) {
@@ -1456,7 +1471,7 @@ const App = (() => {
   return {
     init, navigate, toggleTheme, toggleSidebar, logout,
     forceCheck, setMode,
-    addDomainRow, saveDomainSettings,
+    addDomainRow, removeDomainRow, saveDomainSettings,
     showAddCfCredential, saveCfCredential, editCfCredential, deleteCfCredential, testCfForm,
     showImportDns, fetchDnsRecords, toggleAllDns, updateDnsCount, importSelectedDns,
     filterLogs,
