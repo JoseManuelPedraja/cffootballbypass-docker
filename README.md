@@ -8,6 +8,8 @@
 
 **Evita automáticamente los bloqueos por IP durante las retransmisiones de fútbol en España, alternando el estado del proxy de Cloudflare en tus dominios.**
 
+<img width="1919" height="906" alt="imagen" src="https://github.com/user-attachments/assets/27562d26-4e86-49f5-8c8c-f2f587551b8c" />
+
 [Inicio rápido](#-inicio-rápido) &bull; [Panel v3.0](#-panel-v30) &bull; [Cloudflare API](#-configurar-cloudflare) &bull; [Exposición segura](#-exposición-segura) &bull; [Seguridad](#%EF%B8%8F-seguridad) &bull; [FAQ](#-preguntas-frecuentes)
 
 </div>
@@ -182,29 +184,7 @@ El panel escucha en HTTP por defecto. **Nunca lo expongas directamente a Interne
 
 [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) crea un túnel cifrado desde tu servidor a la red de Cloudflare. No necesitas abrir puertos, ni certificados SSL, ni IP pública. Es lo que usa [Uptime Kuma](https://github.com/louislam/uptime-kuma) y otras aplicaciones self-hosted.
 
-```yaml
-services:
-  cfb-panel:
-    image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
-    container_name: cfb-panel
-    restart: unless-stopped
-    volumes:
-      - cfb-data:/app/data
-    environment:
-      - CFB_TRUST_PROXY=true
-      - CFB_SESSION_SECRET=cambia-esto-por-algo-seguro
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: cfb-tunnel
-    restart: unless-stopped
-    command: tunnel run
-    environment:
-      - TUNNEL_TOKEN=tu-token-de-tunnel
-
-volumes:
-  cfb-data:
-```
+<img width="1919" height="898" alt="imagen" src="https://github.com/user-attachments/assets/22ea8ba3-4b43-46d0-bbb4-c7f406fa38a0" />
 
 **Configuración en Cloudflare:**
 
