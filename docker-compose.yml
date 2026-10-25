@@ -13,5 +13,28 @@ services:
       # - CFB_SESSION_SECRET=change-me
       # - CFB_TRUST_PROXY=true
 
+      ## Uncomment for MySQL/MariaDB (requires db service below)
+      # - CFB_DB_TYPE=mysql
+      # - CFB_DB_HOST=db
+      # - CFB_DB_USER=cfb
+      # - CFB_DB_PASS=cfb_secret
+      # - CFB_DB_NAME=cfb_panel
+    # depends_on:
+    #   - db
+
+  ## Uncomment for MySQL/MariaDB instead of SQLite
+  # db:
+  #   image: mariadb:11
+  #   container_name: cfb-db
+  #   restart: unless-stopped
+  #   environment:
+  #     - MARIADB_ROOT_PASSWORD=root_secret
+  #     - MARIADB_DATABASE=cfb_panel
+  #     - MARIADB_USER=cfb
+  #     - MARIADB_PASSWORD=cfb_secret
+  #   volumes:
+  #     - db-data:/var/lib/mysql
+
 volumes:
   cfb-data:
+  # db-data:
