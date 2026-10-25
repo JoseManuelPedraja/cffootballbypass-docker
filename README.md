@@ -9,6 +9,8 @@
 
 **Automatically bypass Spanish football broadcast blocks by intelligently toggling Cloudflare proxy** ⚡
 
+<img width="1919" height="916" alt="imagen" src="https://github.com/user-attachments/assets/7df34000-8330-42db-af36-8ff0eab20171" />
+
 [Features](#-features) • [Quick Start](#-quick-start) • [Panel v3.0](#-panel-v30-dev) • [Configuration](#️-configuration) • [Security](#️-security) • [FAQ](#-faq)
 
 </div>
@@ -97,7 +99,6 @@ Alpine-based image (~50MB)
 
 ## 🖥️ Panel v3.0 (dev)
 
-<img width="1919" height="916" alt="imagen" src="https://github.com/user-attachments/assets/7df34000-8330-42db-af36-8ff0eab20171" />
 
 > **Branch `dev`** — monitoring dashboard inspired by Uptime Kuma.
 
