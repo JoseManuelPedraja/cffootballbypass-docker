@@ -1,7 +1,5 @@
-**.md
-LICENSE
-.github
-.gitignore
+node_modules/
+data/
 .env
 *.env
 !.env.example

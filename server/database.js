@@ -403,12 +403,20 @@ class Database {
   }
 
   async deleteCfCredential(id, deleteDomains = true) {
-    if (deleteDomains) {
-      await this.knex("domains").where("cf_credential_id", id).del();
-    } else {
-      await this.knex("domains").where("cf_credential_id", id).update({ cf_credential_id: null });
-    }
-    await this.knex("cf_credentials").where("id", id).del();
+    await this.knex.transaction(async (trx) => {
+      if (deleteDomains) {
+        await trx("domains").where("cf_credential_id", id).del();
+      } else {
+        await trx("domains").where("cf_credential_id", id).update({ cf_credential_id: null });
+      }
+      await trx("cf_credentials").where("id", id).del();
+      if (deleteDomains) {
+        const remaining = await trx("cf_credentials").count("* as count").first();
+        if (!remaining || remaining.count === 0) {
+          await trx("domains").del();
+        }
+      }
+    });
   }
 
   // ── Notifications ──────────────────────────────────────────────

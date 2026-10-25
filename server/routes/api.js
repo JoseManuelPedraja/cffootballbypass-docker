@@ -99,11 +99,13 @@ function apiRoutes(db, auth, bypass, notifications) {
 
   router.delete("/cloudflare/:id", requireSession, async (req, res) => {
     const id = parseInt(req.params.id, 10);
-    const domainCount = (await db.getDomains()).filter((d) => d.cf_credential_id === id).length;
+    const domainsBefore = (await db.getDomains()).length;
     await db.deleteCfCredential(id, true);
-    await db.audit(req.session.userId, "cf_credential_deleted", `id=${req.params.id}, ${domainCount} dominios eliminados`, req.ip);
+    const domainsAfter = (await db.getDomains()).length;
+    const deleted = domainsBefore - domainsAfter;
+    await db.audit(req.session.userId, "cf_credential_deleted", `id=${req.params.id}, ${deleted} dominios eliminados`, req.ip);
     bypass.restart();
-    res.json({ ok: true, domainsDeleted: domainCount });
+    res.json({ ok: true, domainsDeleted: deleted });
   });
 
   router.post("/cloudflare/test", requireSession, async (req, res) => {

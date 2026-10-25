@@ -1,68 +1,35 @@
-FROM php:8.4-cli-alpine3.22
+FROM node:20-alpine
 
-LABEL maintainer="Jose Manuel Pedraja"
-LABEL description="CF Football Bypass - Automatic Cloudflare proxy management for La Liga blocks"
-LABEL version="2.1.0"
 LABEL org.opencontainers.image.source="https://github.com/JoseManuelPedraja/cffootballbypass-docker"
+LABEL org.opencontainers.image.title="CF Football Bypass Panel"
+LABEL org.opencontainers.image.description="Monitoring dashboard & autonomous Cloudflare proxy manager"
+LABEL org.opencontainers.image.version="3.0.0"
 
-RUN apk add --no-cache \
-    curl \
-    jq \
-    busybox \
-    bash \
-    bind-tools \
-    ca-certificates \
-    tzdata \
-    msmtp
-
-ENV TZ=Europe/Madrid
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apk add --no-cache tini
 
 WORKDIR /app
 
-COPY run.sh manage_dns.php /app/
-RUN chmod +x /app/run.sh && \
-    chmod 644 /app/manage_dns.php
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-RUN mkdir -p /app/logs /app/data
+COPY server/ ./server/
+COPY public/ ./public/
+COPY locales/ ./locales/
 
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser -s /bin/bash appuser && \
-    chown -R appuser:appuser /app
+RUN mkdir -p /app/data && chown -R node:node /app
 
-USER appuser
+USER node
 
-ENV FEED_URL="https://hayahora.futbol/estado/data.json" \
-    DOMAINS="[]" \
-    INTERVAL_SECONDS=300 \
-    CF_AUTH_TYPE="token" \
-    CF_API_TOKEN="" \
-    CF_ZONE_ID="" \
-    CF_EMAIL="" \
-    CF_ACCOUNT_ID="" \
-    STALE_THRESHOLD_HOURS=6 \
-    MIN_ISPS_BLOCKED=2 \
-    FORCE_PROXY_OFF_OVERRIDE=0 \
-    COOLDOWN_MINUTES=60 \
-    LOG_ENABLED=1 \
-    LOG_RETENTION_DAYS=30 \
-    NOTIFY_EMAIL="" \
-    NOTIFY_FROM="cfb@localhost" \
-    SMTP_HOST="" \
-    SMTP_PORT=587 \
-    SMTP_USER="" \
-    SMTP_PASS="" \
-    SMTP_TLS="on"
+ENV CFB_PORT=3001 \
+    CFB_DATA_DIR=/app/data \
+    NODE_ENV=production
 
-# All sensitive variables support Docker secrets via _FILE suffix:
-# CF_API_TOKEN_FILE, CF_ZONE_ID_FILE, CF_EMAIL_FILE, CF_ACCOUNT_ID_FILE,
-# DOMAINS_FILE, NOTIFY_EMAIL_FILE, SMTP_HOST_FILE, SMTP_USER_FILE, SMTP_PASS_FILE
-# Or mount to /run/secrets/<lowercase_name> (e.g. /run/secrets/cf_api_token)
+EXPOSE 3001
 
-HEALTHCHECK --interval=60s \
-            --timeout=10s \
-            --start-period=15s \
-            --retries=3 \
-    CMD curl -f -s -m 5 https://hayahora.futbol/estado/data.json > /dev/null || exit 1
+VOLUME ["/app/data"]
 
-CMD ["./run.sh"]
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD node -e "fetch('http://localhost:3001/api/auth/setup-required').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+
+ENTRYPOINT ["tini", "--"]
+CMD ["node", "server/server.js"]

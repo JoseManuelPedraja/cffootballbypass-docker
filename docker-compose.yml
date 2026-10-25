@@ -1,0 +1,17 @@
+services:
+  cfb-panel:
+    image: ghcr.io/josemanuelpedraja/cffootballbypass-docker:latest
+    container_name: cfb-panel
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - cfb-data:/app/data
+    environment:
+      - CFB_PORT=3001
+      # - ADMIN_PASSWORD=your-secure-password
+      # - CFB_SESSION_SECRET=change-me
+      # - CFB_TRUST_PROXY=true
+
+volumes:
+  cfb-data:
