@@ -15,7 +15,10 @@ RUN apk add --no-cache tini \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN apk add --no-cache --virtual .build-deps python3 make g++ \
+    && npm ci --omit=dev \
+    && apk del .build-deps \
+    && npm cache clean --force
 
 COPY server/ ./server/
 COPY public/ ./public/
