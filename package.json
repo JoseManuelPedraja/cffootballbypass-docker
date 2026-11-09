@@ -23,7 +23,7 @@
     "knex": "^3.1.0",
     "node-fetch": "^3.3.2",
     "nodemailer": "^10.2.1",
-    "otpauth": "^9.3.1",
+    "otpauth": "^9.6.0",
     "prom-client": "^15.1.3",
     "qrcode": "^1.5.4",
     "socket.io": "^4.7.5"
